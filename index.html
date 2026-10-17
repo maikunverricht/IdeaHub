@@ -1416,6 +1416,20 @@
   body[data-theme] .ihb-inbox-handle { flex: none; cursor: grab; color: var(--text-3); touch-action: none; user-select: none; font-size: 14px; line-height: 1; padding: 2px; }
   body[data-theme] .ihb-inbox-row.is-match .ihb-inbox-text { color: var(--amber); }
   body[data-theme] .ihb-inboxsheet.is-dragging { opacity: .12; pointer-events: none; transition: opacity .2s; }
+  /* ---- Ordner im Blick ---- */
+  body[data-theme] .ihb-file-toggle { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 4px 0; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+  body[data-theme] .ihb-file-caret { display: inline-block; width: 12px; color: var(--text-3); }
+  body[data-theme] .ihb-file-list { margin-top: 4px; }
+  body[data-theme] .ihb-file-group { margin: 12px 0 4px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+  body[data-theme] .ihb-file-row { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  body[data-theme] .ihb-file-name { flex: 1 1 100%; min-width: 0; padding: 0; border: 0; background: transparent; text-align: left; font-family: var(--mono); font-size: 12px; color: var(--text); cursor: pointer; overflow-wrap: anywhere; }
+  body[data-theme] .ihb-file-name:hover, body[data-theme] .ihb-file-name[aria-expanded="true"] { color: var(--amber); }
+  body[data-theme] .ihb-file-title { flex: 1 1 auto; min-width: 0; font-size: 12.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  body[data-theme] .ihb-file-time { flex: none; font-family: var(--mono); font-size: 10.5px; color: var(--text-3); }
+  body[data-theme] .ihb-file-row .ihb-chip { flex: none; font-size: 11.5px; padding: 3px 9px; }
+  body[data-theme] .ihb-file-preview { margin: 6px 0 4px; max-height: 260px; overflow: auto; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--film); color: var(--text); font-family: var(--mono); font-size: 11px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+  body[data-theme] .ihb-tree-file { margin: 14px 0 0; font-size: 11.5px; color: var(--text-3); }
+  body[data-theme] .ihb-tree-file code { font-family: var(--mono); font-size: 11px; color: var(--text-2); }
   /* ---- Kompost ---- */
   body[data-theme] .ihb-compost-title { margin: 0; font-size: 17px; font-weight: 600; color: var(--text); }
   body[data-theme] .ihb-compost-hint { margin-top: 4px; font-size: 11.5px; color: var(--text-3); }
@@ -1552,7 +1566,7 @@
 
   <div id="captionArea"></div>
 
-  <div class="ihb-version">IdeaHub v3.8</div>
+  <div class="ihb-version">IdeaHub v3.9</div>
 
   <input id="importInput" type="file" accept=".md,text/markdown" multiple style="display:none" />
   <input id="importJsonInput" type="file" accept=".json,application/json" style="display:none" />
@@ -4609,34 +4623,49 @@
   // Reads every .md file in the connected folder into the map.
   function loadFromFolder(handle) {
     var loaded = [], map = new Map(), inboxLoaded = null, inboxStand = null, compostLoaded = null;
+    var files = new Map(), others = 0;   // Pfad -> { t, how, text }; Eintraege, die IdeaHub nicht anfasst
     var iter = handle.entries();
     function step() {
       return iter.next().then(function (res) {
         if (res.done) return;
         var name = res.value[0], entry = res.value[1];
         if (entry.kind === "directory" && name.toLowerCase() === COMPOST_DIR.toLowerCase()) {
-          return readCompostDir(entry).then(function (r) { compostLoaded = r; }).then(step);
+          return readCompostDir(entry, files).then(function (r) { compostLoaded = r; }).then(step);
         }
         if (entry.kind === "file" && name.toLowerCase().slice(-3) === ".md") {
           return entry.getFile()
-            .then(function (file) { return file.text(); })
+            .then(function (file) {
+              var t = file.lastModified;
+              return file.text().then(function (text) { files.set(name, { t: t || Date.now(), how: "geändert", text: text }); return text; });
+            })
             .then(function (text) {
-              if (isInboxMd(text, name)) { inboxLoaded = parseInboxMd(text); inboxStand = inboxMdStand(text); return; }   // nie als Kernidee
+              if (isInboxMd(text, name)) {   // nie als Kernidee
+                inboxLoaded = parseInboxMd(text);
+                inboxStand = inboxMdStand(text);
+                files.get(name).sig = inboxToMd(inboxLoaded);   // Inhalt ohne Stand, zum Vergleich beim Schreiben
+                return;
+              }
               var core = parseMdToCore(text, name);
               loaded.push(core);
               map.set(core.id, name);
             })
             .then(step);
         }
+        others++;   // gehoert nicht zu IdeaHub, bleibt unberuehrt
         return step();
       });
     }
-    return step().then(function () { return { cores: loaded, map: map, inbox: inboxLoaded, inboxStand: inboxStand, compost: compostLoaded }; });
+    return step().then(function () {
+      return { cores: loaded, map: map, inbox: inboxLoaded, inboxStand: inboxStand, compost: compostLoaded, files: files, others: others };
+    });
   }
 
   function adoptFolder(handle, replaceCores) {
     return loadFromFolder(handle).then(function (res) {
       writtenFiles = res.map;
+      folderFiles = res.files || new Map();
+      folderOthers = res.others || 0;
+      folderPreview = null;
       state.dirHandle = handle;
       state.folderName = handle.name;
       inboxFileKnown = !!res.inbox;
@@ -4732,6 +4761,7 @@
       chain = chain.then(function () {
         return handle.removeEntry(pair[1]).catch(function () {}).then(function () {
           writtenFiles.delete(pair[0]);
+          folderFiles.delete(pair[1]);
         });
       });
     });
@@ -4743,11 +4773,16 @@
         if (prevName && prevName !== fname) {
           pre = handle.removeEntry(prevName).catch(function () {});
         }
+        var md = coreToMd(core), known = folderFiles.get(fname);
+        // unveraendert: nicht neu schreiben - schont die Platte und laesst die Zeitpunkte ehrlich
+        if (prevName === fname && known && known.text === md) return;
         return pre.then(function () {
+          if (prevName && prevName !== fname) folderFiles.delete(prevName);
           return handle.getFileHandle(fname, { create: true }).then(function (fh) {
             return fh.createWritable().then(function (w) {
-              return w.write(coreToMd(core)).then(function () { return w.close(); }).then(function () {
+              return w.write(md).then(function () { return w.close(); }).then(function () {
                 writtenFiles.set(core.id, fname);
+                folderFiles.set(fname, { t: Date.now(), how: "geschrieben", text: md });
               });
             });
           });
@@ -4757,15 +4792,21 @@
     chain = chain.then(function () {
       // auch ein geleerter Eingang wird geschrieben, sonst kaeme Erledigtes zurueck
       if (!state.inbox.length && !inboxFileKnown) return;
+      var sig = inboxToMd(state.inbox), known = folderFiles.get(INBOX_FILE);
+      if (known && known.sig === sig) return;   // nichts Neues im Eingang
+      var text = inboxToMd(state.inbox, new Date().toISOString());
       return handle.getFileHandle(INBOX_FILE, { create: true }).then(function (fh) {
         return fh.createWritable().then(function (w) {
-          return w.write(inboxToMd(state.inbox, new Date().toISOString())).then(function () { return w.close(); });
+          return w.write(text).then(function () { return w.close(); });
         });
-      }).then(function () { inboxFileKnown = true; });
+      }).then(function () {
+        inboxFileKnown = true;
+        folderFiles.set(INBOX_FILE, { t: Date.now(), how: "geschrieben", text: text, sig: sig });
+      });
     });
     chain = chain.then(function () { return syncCompostDir(handle); });
     return chain.then(function () {
-      state.folderStatus = "Synchronisiert · " + state.cores.length + " Dateien";
+      state.folderStatus = "Synchronisiert · " + folderRows().length + " Dateien";   // mit Eingang und Kompost
       renderSettingsModal();
     }).catch(function () {
       state.folderStatus = "Synchronisierung fehlgeschlagen";
@@ -5784,7 +5825,8 @@
           '<div class="ihb-btnrow">' +
           '<button type="button" class="ihb-btn" data-role="folder-reload">' + icon("download", 14) + ' Aus Ordner neu laden</button>' +
           '<button type="button" class="ihb-btn" data-role="folder-connect">' + icon("folder", 14) + ' Anderen Ordner wählen</button>' +
-          '<button type="button" class="ihb-btn danger" data-role="folder-disconnect">Trennen</button></div>';
+          '<button type="button" class="ihb-btn danger" data-role="folder-disconnect">Trennen</button></div>' +
+          folderFilesHtml();
       } else if (pendingFolderHandle) {
         folderSectionHtml =
           '<p class="ihb-note">Zuletzt genutzt: <b>' + escapeHtml(pendingFolderHandle.name) + '</b>. ' +
@@ -6288,7 +6330,8 @@
              : '<div class="ihb-info-notes ihb-info-empty">Noch keine Beschreibung</div>') +
       (tags.length ? '<div class="ihb-tree-tags">' + tags.map(function (t) {
         return '<span class="ihb-tree-tag">' + escapeHtml(t) + "</span>";
-      }).join("") + "</div>" : "");
+      }).join("") + "</div>" : "") +
+      treeFileHtml(sel ? sel.core : core);
   }
 
   // ---------- outliner: editing straight in the tree ----------
@@ -7754,6 +7797,8 @@
       var sig = coreSignature(c);
       sigs[c.id] = sig;
       if (!validIso(c.updated)) c.updated = now;   // neu, oder aus der Zeit vor v3.8
+      // ohne festes Anlagedatum schriebe die .md bei jedem Speichern ein neues
+      if (!validIso(c.created)) c.created = c.updated;
       else if (!accept && coreSigs && coreSigs[c.id] !== undefined && coreSigs[c.id] !== sig) c.updated = now;
     });
     coreSigs = sigs;
@@ -8011,14 +8056,20 @@
   // ---- Ordner: Kompost/ ----
   var compostFiles = new Map();    // id -> Dateiname in Kompost/
   var compostDirKnown = false;     // der Ordner hat (oder hatte) einen Kompost
-  function readCompostDir(dir) {
+  function readCompostDir(dir, files) {
     var cores = [], map = new Map(), iter = dir.entries();
     function step() {
       return iter.next().then(function (res) {
         if (res.done) return;
         var name = res.value[0], entry = res.value[1];
         if (entry.kind !== "file" || name.toLowerCase().slice(-3) !== ".md") return step();
-        return entry.getFile().then(function (f) { return f.text(); }).then(function (text) {
+        return entry.getFile().then(function (f) {
+          var t = f.lastModified;
+          return f.text().then(function (text) {
+            if (files) files.set(COMPOST_DIR + "/" + name, { t: t || Date.now(), how: "geändert", text: text });
+            return text;
+          });
+        }).then(function (text) {
           var c = parseMdToCore(text, name);
           if (!c.composted) c.composted = new Date().toISOString();
           cores.push(c);
@@ -8038,17 +8089,26 @@
       compostFiles.forEach(function (fname, id) {
         if (ids[id]) return;
         chain = chain.then(function () {
-          return dir.removeEntry(fname).catch(function () {}).then(function () { compostFiles.delete(id); });
+          return dir.removeEntry(fname).catch(function () {}).then(function () {
+            compostFiles.delete(id);
+            folderFiles.delete(COMPOST_DIR + "/" + fname);
+          });
         });
       });
       state.compost.forEach(function (core) {
         chain = chain.then(function () {
           var fname = coreFilename(core), prev = compostFiles.get(core.id);
+          var md = coreToMd(core), key = COMPOST_DIR + "/" + fname, known = folderFiles.get(key);
+          if (prev === fname && known && known.text === md) return;   // unveraendert
           var pre = prev && prev !== fname ? dir.removeEntry(prev).catch(function () {}) : Promise.resolve();
+          if (prev && prev !== fname) folderFiles.delete(COMPOST_DIR + "/" + prev);
           return pre.then(function () { return dir.getFileHandle(fname, { create: true }); })
             .then(function (fh) { return fh.createWritable(); })
-            .then(function (w) { return w.write(coreToMd(core)).then(function () { return w.close(); }); })
-            .then(function () { compostFiles.set(core.id, fname); });
+            .then(function (w) { return w.write(md).then(function () { return w.close(); }); })
+            .then(function () {
+              compostFiles.set(core.id, fname);
+              folderFiles.set(key, { t: Date.now(), how: "geschrieben", text: md });
+            });
         });
       });
       return chain;
@@ -8070,6 +8130,114 @@
     else if (role === "compost-inbox") compostAction("inbox");
     else if (role === "compost-put") compostAction("put");
     else if (role === "compost-later") compostAction("later");
+  });
+
+  // ---------- Ordner im Blick ----------
+  // Welche Dateien IdeaHub im verbundenen Ordner fuehrt, wann sie zuletzt
+  // geaendert bzw. geschrieben wurden, und was darin steht.
+  var folderFiles = new Map();   // Pfad im Ordner -> { t, how: "geändert"|"geschrieben", text, sig }
+  var folderOthers = 0;          // Eintraege im Ordner, die IdeaHub nicht anfasst
+  var folderListOpen = false;    // Liste in den Einstellungen aufgeklappt
+  var folderPreview = null;      // { path, text, error } geoeffnete Vorschau
+  function folderRows() {
+    var rows = [];
+    state.cores.forEach(function (c) {
+      rows.push({ kind: "core", id: c.id, path: writtenFiles.get(c.id) || coreFilename(c), title: c.text || "Unbenannt" });
+    });
+    if (inboxFileKnown || state.inbox.length) {
+      var n = state.inbox.length;
+      rows.push({ kind: "inbox", path: INBOX_FILE, title: n === 1 ? "1 Gedanke" : n + " Gedanken" });
+    }
+    state.compost.forEach(function (c) {
+      rows.push({ kind: "compost", id: c.id, path: COMPOST_DIR + "/" + (compostFiles.get(c.id) || coreFilename(c)), title: c.text || "Unbenannt" });
+    });
+    return rows;
+  }
+  function fmtWhen(t) {
+    var d = new Date(t), now = new Date();
+    var today = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    return today ? pad2(d.getHours()) + ":" + pad2(d.getMinutes()) : pad2(d.getDate()) + "." + pad2(d.getMonth() + 1) + "." + d.getFullYear();
+  }
+  function fileStamp(path) {
+    var info = folderFiles.get(path);
+    if (!info) return "wird geschrieben …";
+    return info.how + " " + fmtWhen(info.t);
+  }
+  function fileRowHtml(r) {
+    var open = folderPreview && folderPreview.path === r.path;
+    var show = r.kind === "core" ? "Zeigen" : r.kind === "inbox" ? "Eingang öffnen" : "Im Kompost";
+    var html = '<div class="ihb-file-row" data-role="file-row" data-path="' + escapeHtml(r.path) + '">' +
+      '<button type="button" class="ihb-file-name" data-role="file-preview-toggle" data-path="' + escapeHtml(r.path) + '" aria-expanded="' + !!open +
+      '" title="Inhalt ansehen">' + escapeHtml(r.path) + "</button>" +
+      '<span class="ihb-file-title">' + escapeHtml(r.title) + "</span>" +
+      '<span class="ihb-file-time" data-role="file-time">' + escapeHtml(fileStamp(r.path)) + "</span>" +
+      '<button type="button" class="ihb-chip" data-role="file-show" data-kind="' + r.kind + '"' + (r.id ? ' data-id="' + r.id + '"' : "") + ">" + show + "</button></div>";
+    if (open) {
+      html += '<pre class="ihb-file-preview" data-role="file-preview" tabindex="0">' +
+        escapeHtml(folderPreview.error || (folderPreview.text === null ? "liest …" : folderPreview.text)) + "</pre>";
+    }
+    return html;
+  }
+  function folderFilesHtml() {
+    var rows = folderRows();
+    var html = '<button type="button" class="ihb-file-toggle" data-role="folder-files-toggle" aria-expanded="' + folderListOpen + '">' +
+      '<span class="ihb-file-caret">' + (folderListOpen ? "▾" : "▸") + "</span> Dateien im Ordner (" + rows.length + ")</button>";
+    if (!folderListOpen) return html;
+    html += '<div class="ihb-file-list" data-role="folder-files">';
+    var groups = [["core", "Kernideen"], ["inbox", "Eingang"], ["compost", COMPOST_DIR + "/"]];
+    groups.forEach(function (g) {
+      var part = rows.filter(function (r) { return r.kind === g[0]; });
+      if (!part.length) return;
+      html += '<div class="ihb-file-group">' + escapeHtml(g[1]) + (g[0] === "inbox" ? "" : " · " + part.length) + "</div>" + part.map(fileRowHtml).join("");
+    });
+    if (folderOthers) html += '<p class="ihb-note" data-role="folder-others">Außerdem ' + (folderOthers === 1 ? "1 anderer Eintrag" : folderOthers + " andere Einträge") +
+      ", die IdeaHub nicht anfasst.</p>";
+    return html + "</div>";
+  }
+  // liest die Datei so, wie sie gerade im Ordner steht
+  function readFolderFile(p) {
+    var h = state.dirHandle;
+    if (!h) return Promise.reject(new Error("kein Ordner"));
+    var parts = p.split("/");
+    var dir = parts.length > 1 ? h.getDirectoryHandle(parts[0]) : Promise.resolve(h);
+    return dir.then(function (d) { return d.getFileHandle(parts[parts.length - 1]); })
+      .then(function (fh) { return fh.getFile(); })
+      .then(function (f) { return f.text(); });
+  }
+  function toggleFilePreview(p) {
+    if (folderPreview && folderPreview.path === p) { folderPreview = null; renderSettingsModal(); return; }
+    var mine = folderPreview = { path: p, text: null, error: "" };
+    renderSettingsModal();
+    readFolderFile(p).then(function (t) { mine.text = t; }, function () {
+      mine.error = "Die Datei ließ sich nicht lesen – vielleicht ist sie noch nicht geschrieben.";
+    }).then(function () { if (folderPreview === mine) renderSettingsModal(); });
+  }
+  function showFromFile(kind, id) {
+    if (kind === "compost") { openCompost(); return; }
+    closeSettings();
+    if (kind === "inbox") { openInbox(); return; }
+    if (!coreById(id)) return;
+    if (state.view === "tree") {
+      state.selectedDetail = null;
+      state.focusedId = id;
+      treeExpanded[id] = true;
+      renderTree();
+      return;
+    }
+    if (state.scope) leaveGroup();
+    if (state.focusedId !== id) toggleFocus(id);
+  }
+  function treeFileHtml(core) {
+    if (!core || !state.dirHandle) return "";
+    return '<p class="ihb-tree-file" data-role="tree-file">Datei <code>' + escapeHtml(coreFilename(core)) + "</code></p>";
+  }
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest && e.target.closest("[data-role]");
+    if (!t) return;
+    var role = t.getAttribute("data-role");
+    if (role === "folder-files-toggle") { folderListOpen = !folderListOpen; if (!folderListOpen) folderPreview = null; renderSettingsModal(); }
+    else if (role === "file-preview-toggle") toggleFilePreview(t.getAttribute("data-path"));
+    else if (role === "file-show") showFromFile(t.getAttribute("data-kind"), t.getAttribute("data-id"));
   });
 
   // ---------- Aufruf per Link ----------
@@ -8160,7 +8328,8 @@
     startDictation: startDictation, stopDictation: stopDictation, dictationState: function () { return dictation; },
     setPhoneStart: setPhoneStart, isPhone: isPhone, sinkIntoCore: sinkIntoCore, SINK_MS: SINK_MS,
     compostCandidates: compostCandidates, startCompost: startCompost, compostState: function () { return compostSession; },
-    restoreCompost: restoreCompost, setCompostDays: setCompostDays, stampCoreChanges: stampCoreChanges, openCompost: openCompost, parseMdToCore: parseMdToCore, slugify: slugify, coreFilename: coreFilename,
+    restoreCompost: restoreCompost, setCompostDays: setCompostDays, stampCoreChanges: stampCoreChanges, openCompost: openCompost,
+    folderRows: folderRows, folderFileInfo: function (p) { return folderFiles.get(p) || null; }, readFolderFile: readFolderFile, parseMdToCore: parseMdToCore, slugify: slugify, coreFilename: coreFilename,
     coreStatus: coreStatus, coreProgress: coreProgress, cycleDetailStatus: cycleDetailStatus,
     allTags: allTags, toggleTagFilter: toggleTagFilter, clearTagFilter: clearTagFilter, computeCounts: computeCounts,
     highlightMatch: highlightMatch, setTheme: setTheme, glassFill: glassFill,
