@@ -2,9 +2,6 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8" />
-<!-- Sicherheitsregel (seit 11.10.2026): Code, Schrift und Daten nur aus dieser Datei bzw.
-     derselben Herkunft. Siehe lizenz.md, „Sicherheit der Herkunft“. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' data: blob:; frame-src 'self' blob: data:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>IdeaHub</title>
 <meta name="theme-color" content="#06090E" />
@@ -830,6 +827,7 @@
   .ihb-tree-left { flex: 0 0 40%; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
   .ihb-tree-pane { flex: 1; min-width: 0; }
   .ihb-tree-count { font-size: 11.5px; color: rgba(231,233,251,0.5); padding: 0 4px; }
+  .ihb-tree-warn { margin: 6px 0 0; line-height: 1.45; }
   body[data-theme="minimal"] .ihb-tree-count { color: #6a6f88; }
   .ihb-tree-detail { flex: 1; min-width: 0; padding: 18px 20px; }
   @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -1342,6 +1340,97 @@
     color: var(--text); font-family: var(--display); font-size: 13px;
   }
   body[data-theme] .ihb-chip:hover { border-color: var(--line-hi); background: var(--film); }
+  /* ---- Schnellerfassung im Hub-Feld ---- */
+  body[data-theme] .ihb-capture-preview { margin: 0; font-family: var(--mono); font-size: 12px; line-height: 1.5; color: var(--text); text-align: center; }
+  body[data-theme] .ihb-capture-preview kbd { font: inherit; font-size: 10.5px; padding: 1px 5px; margin-right: 7px; border: 1px solid var(--line-strong); border-radius: 4px; color: var(--amber); }
+  body[data-theme] .ihb-capture-preview[data-kind="full"], body[data-theme] .ihb-capture-preview[data-kind="limit"] { color: var(--over); }
+  body[data-theme] .ihb-capture-dup { color: var(--over); }
+  /* ---- eingefuegte Liste ---- */
+  body[data-theme] .ihb-paste-tree { list-style: none; margin: 6px 0 2px; padding: 0; width: 100%; max-width: 420px; text-align: left; font-size: 13px; color: var(--text); }
+  body[data-theme] .ihb-paste-tree > li { margin: 6px 0; }
+  body[data-theme] .ihb-paste-tree ul { list-style: none; margin: 3px 0 0 16px; padding: 0; color: var(--text-2); font-size: 12.5px; }
+  body[data-theme] .ihb-paste-tree ul li { margin: 2px 0; }
+  body[data-theme] .ihb-paste-tree ul li::before { content: "– "; color: var(--text-3); }
+  body[data-theme] .ihb-paste-tree li.ihb-paste-more { color: var(--text-3); }
+  body[data-theme] .ihb-paste-tree li.ihb-paste-more::before { content: none; }
+  body[data-theme] .ihb-paste-badge { font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--amber); margin-left: 8px; }
+  body[data-theme] .ihb-paste-actions { flex-direction: row; justify-content: center; }
+  /* ---- Gliederungsmodus im Baum ---- */
+  body[data-theme] .ihb-tree-input { width: 100%; min-width: 0; font: inherit; color: var(--text); background: transparent; border: 0; border-bottom: 1px solid var(--amber); border-radius: 0; outline: none; padding: 0 0 1px; }
+  body[data-theme] .ihb-tree-hint { margin: 6px 0 0; line-height: 1.45; }
+  /* ---- Eingang (Ebene 1) ---- */
+  body[data-theme] .ihb-inboxcount { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--film); color: var(--text-2); font-family: var(--mono); font-size: 11px; }
+  body[data-theme] .ihb-inboxbtn.is-empty .ihb-inboxcount { display: none; }
+  body[data-theme] .ihb-inboxbtn.is-full { border-color: var(--amber); }
+  body[data-theme] .ihb-inboxbtn.is-full .ihb-inboxcount { background: var(--amber); color: var(--ink); }
+  body[data-theme] .ihb-inboxsheet { align-items: flex-start; }
+  body[data-theme] .ihb-inboxcard { max-width: 540px; width: 100%; margin-top: 64px; max-height: calc(100% - 84px); overflow-y: auto; }
+  body[data-theme] #inboxInput { width: 100%; margin: 4px 0 2px; }
+  body[data-theme] .ihb-inbox-inputrow { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; }
+  body[data-theme] .ihb-inbox-inputrow #inboxInput { flex: 1; min-width: 0; margin: 0; }
+  body[data-theme] .ihb-inbox-mic { flex: none; width: 38px; height: 38px; padding: 0; border-radius: 50%; border: 1px solid var(--line-strong); background: transparent; color: var(--text-2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background .2s, box-shadow .2s; }
+  body[data-theme] .ihb-inbox-mic[hidden] { display: none; }
+  body[data-theme] .ihb-inbox-mic.is-on { background: var(--amber); border-color: var(--amber); color: var(--ink); box-shadow: 0 0 0 4px var(--amber-soft); }
+  body[data-theme] .ihb-inbox-live { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; font-size: 12.5px; color: var(--text-2); }
+  body[data-theme] .ihb-inbox-live[hidden] { display: none; }
+  body[data-theme] .ihb-inbox-live i { color: var(--text); }
+  body[data-theme] .ihb-live-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
+  body[data-motion="on"] .ihb-live-dot { animation: ihbLivePulse 1.2s ease-in-out infinite; }
+  @keyframes ihbLivePulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+  body[data-theme] .ihb-inbox-notice { margin: 8px 0 0; color: var(--amber); }
+  body[data-theme] .ihb-inbox-notice:empty { display: none; }
+  body[data-theme] .ihb-inbox-pick { flex: none; width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 1px solid var(--line-strong); background: transparent; color: var(--ink); font-family: var(--mono); font-size: 10px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+  body[data-theme] .ihb-inbox-pick[aria-pressed="true"] { background: var(--amber); border-color: var(--amber); }
+  .ihb-inbox-pick { position: relative; }
+  .ihb-inbox-pick::after { content: ""; position: absolute; inset: -9px -8px; }   /* Fingerflaeche um den kleinen Kreis */
+  @media (max-width: 599px) { body[data-theme] .ihb-inbox-time { display: none; } }   /* der Tag steht darueber */
+  body[data-theme] .ihb-inbox-badge { margin-left: 6px; font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--amber); white-space: nowrap; }
+  body[data-theme] .ihb-inbox-pickbar { margin-top: 10px; }
+  body[data-theme] .ihb-inbox-pickbar .ihb-note { margin: 0 0 8px; text-align: center; }
+  body[data-theme] .ihb-inbox-pickbar .ihb-btnrow { flex-wrap: wrap; }
+  body[data-theme] .ihb-inbox-pickbar .ihb-btn:disabled { opacity: .45; cursor: default; }
+  body[data-theme] .ihb-inbox-day { margin: 14px 0 4px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+  body[data-theme] .ihb-inbox-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  body[data-theme] .ihb-inbox-time { flex: none; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  body[data-theme] .ihb-inbox-text { flex: 1; min-width: 0; color: var(--text); font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+  body[data-theme] .ihb-inbox-row .ihb-chip { flex: none; font-size: 12px; padding: 4px 10px; }
+  body[data-theme] .ihb-inbox-drop { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line-strong); background: transparent; color: var(--text-2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+  body[data-theme] .ihb-inbox-empty { margin-top: 12px; }
+  @media (max-width: 599px) {
+    body[data-theme] .ihb-inboxsheet { align-items: flex-end; padding: 0; }
+    body[data-theme] .ihb-inboxcard { margin-top: 0; max-width: none; max-height: 85%; border-radius: 20px 20px 0 0; }
+  }
+  /* ---- Einsortier-Dialog ---- */
+  body[data-theme] .ihb-sort { outline: none; display: flex; flex-direction: column; gap: 8px; }
+  body[data-theme] .ihb-sort .ihb-chiprow { justify-content: flex-start; }
+  body[data-theme] .ihb-sort kbd { font-family: var(--mono); font-size: 10px; padding: 0 4px; margin-right: 6px; border: 1px solid var(--line-strong); border-radius: 4px; color: var(--amber); }
+  body[data-theme] .ihb-sort .ihb-chip:disabled { opacity: .45; cursor: default; }
+  body[data-theme] .ihb-sort-full { margin-left: 6px; font-family: var(--mono); font-size: 10px; color: var(--over); }
+  /* ---- Eingang auf der Karte ---- */
+  .ihb-inboxdots { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+  body[data-theme] .ihb-inboxdot { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; padding: 0; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--film); opacity: .75; cursor: grab; pointer-events: auto; touch-action: none; transition: opacity .3s, background .3s, box-shadow .3s; }
+  body[data-theme] .ihb-inboxdot:hover { opacity: 1; border-color: var(--line-hi); }
+  body[data-theme] .ihb-inboxdot.is-match { opacity: 1; background: var(--amber); border-color: var(--amber); box-shadow: 0 0 10px var(--amber-soft); }
+  body[data-theme] .ihb-inboxdot.is-dim { opacity: .2; }
+  body[data-theme] .ihb-inboxmore { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; padding: 2px; border: 0; background: transparent; cursor: pointer; font-family: var(--mono); font-size: 10px; color: var(--text-2); }
+  body[data-theme] .ihb-inbox-handle { flex: none; cursor: grab; color: var(--text-3); touch-action: none; user-select: none; font-size: 14px; line-height: 1; padding: 2px; }
+  body[data-theme] .ihb-inbox-row.is-match .ihb-inbox-text { color: var(--amber); }
+  body[data-theme] .ihb-inboxsheet.is-dragging { opacity: .12; pointer-events: none; transition: opacity .2s; }
+  /* ---- Kompost ---- */
+  body[data-theme] .ihb-compost-title { margin: 0; font-size: 17px; font-weight: 600; color: var(--text); }
+  body[data-theme] .ihb-compost-hint { margin-top: 4px; font-size: 11.5px; color: var(--text-3); }
+  body[data-theme] .ihb-compost-note { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; color: var(--text-2); }
+  body[data-theme] .ihb-compost-list { margin-top: 10px; }
+  body[data-theme] .ihb-compost-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  body[data-theme] .ihb-compost-name { flex: 1 1 140px; min-width: 0; color: var(--text); font-size: 14px; overflow-wrap: anywhere; }
+  body[data-theme] .ihb-compost-meta { flex: 1 1 100%; order: 3; font-family: var(--mono); font-size: 10.5px; color: var(--text-3); }
+  body[data-theme] .ihb-compost-row.is-match .ihb-compost-name { color: var(--amber); }
+  body[data-theme] .ihb-compost-row .ihb-chip { font-size: 12px; padding: 4px 10px; }
+  body[data-theme] .ihb-compost-row .ihb-chip:disabled { opacity: .45; cursor: default; }
+  body[data-theme] .ihb-sink { position: fixed; left: 0; top: 0; z-index: 79; pointer-events: none; max-width: 240px; padding: 5px 10px; border-radius: 10px; background: var(--surface-solid); border: 1px solid var(--amber); color: var(--text); font-size: 12.5px; box-shadow: var(--shadow); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; will-change: transform, opacity; }
+  body[data-theme] .ihb-bubble.ihb-absorb { animation: ihbAbsorb calc(.6s * var(--sp)) ease-out; }
+  @keyframes ihbAbsorb { 0% { box-shadow: 0 0 0 0 var(--amber-soft); } 35% { box-shadow: 0 0 0 12px var(--amber-soft); } 100% { box-shadow: 0 0 0 0 transparent; } }
+  body[data-theme] .ihb-inbox-ghost { position: fixed; z-index: 80; pointer-events: none; transform: translate(12px, 12px); max-width: 260px; padding: 6px 10px; border-radius: 10px; background: var(--surface-solid); border: 1px solid var(--amber); color: var(--text); font-size: 13px; box-shadow: var(--shadow); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   body[data-theme] .ihb-version { font-family: var(--mono); color: var(--text-3); opacity: .7; letter-spacing: .08em; }
 
   /* ---- Baum: Kacheln wie im Kontor ---- */
@@ -1395,6 +1484,11 @@
       </button>
 
       <div class="ihb-nav-r">
+        <button type="button" class="ihb-settingsbtn ihb-inboxbtn is-empty" id="inboxBtn" aria-label="Eingang öffnen">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l2.5-7h11L20 13"/><path d="M4 13v5h16v-5h-5l-1.5 2h-3L9 13z"/></svg>
+          <span class="ihb-hide-sm">Eingang</span>
+          <span class="ihb-inboxcount" id="inboxCount">0</span>
+        </button>
         <button type="button" class="ihb-settingsbtn" id="settingsBtn" aria-label="Einstellungen">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="14" cy="7" r="2"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="17" r="2"/></svg>
           <span class="ihb-hide-sm">Einstellungen</span>
@@ -1438,6 +1532,7 @@
 
     </div>
 
+    <div class="ihb-inboxdots" id="inboxDots" aria-label="Gedanken im Eingang"></div>
     <div class="ihb-zoomctl" id="zoomCtl">
       <button type="button" data-role="zoom-in" aria-label="Vergrößern">+</button>
       <button type="button" data-role="zoom-reset" aria-label="Ansicht zurücksetzen">
@@ -1457,12 +1552,24 @@
 
   <div id="captionArea"></div>
 
-  <div class="ihb-version">IdeaHub v3.0</div>
+  <div class="ihb-version">IdeaHub v3.8</div>
 
   <input id="importInput" type="file" accept=".md,text/markdown" multiple style="display:none" />
   <input id="importJsonInput" type="file" accept=".json,application/json" style="display:none" />
 </div>
 
+<div class="ihb-overlay ihb-inboxsheet" id="inboxSheet" role="dialog" aria-label="Eingang">
+  <div class="ihb-card ihb-inboxcard">
+    <h2><span id="inboxTitle">Eingang</span> <button type="button" data-role="inbox-close" aria-label="Schließen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></h2>
+    <div class="ihb-inbox-inputrow">
+      <input id="inboxInput" class="ihb-taginput" placeholder="Gedanke festhalten – Enter" autocomplete="off" aria-label="Neuer Gedanke" />
+      <button type="button" class="ihb-inbox-mic" id="inboxMic" data-role="inbox-mic" hidden aria-pressed="false" aria-label="Diktieren" title="Diktieren – jede Pause beendet einen Gedanken. In Chrome läuft die Erkennung über Googles Server."><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="21"/></svg></button>
+    </div>
+    <p class="ihb-inbox-live" id="inboxLive" aria-live="polite" hidden></p>
+    <p class="ihb-note ihb-inbox-notice" id="inboxNotice" role="status"></p>
+    <div id="inboxList"></div>
+  </div>
+</div>
 <div class="ihb-overlay" id="settingsModal">
   <div class="ihb-card">
     <h2>Einstellungen <button type="button" data-role="close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></h2>
@@ -1470,746 +1577,6 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════
-     LIZENZBLOCK  (lizenz.js + lizenz-tor.js + Konfiguration)
-     Prüfschlüssel der Lizenzstelle ist eingetragen.
-     ══════════════════════════════════════════════════════════════ -->
-<script>
-/* ============================================================
-   WBLizenz — Lizenzbaustein für das Kontor
-   ------------------------------------------------------------
-   Stufe A: signierter Schlüssel, offline prüfbar, kein Server.
-   Signatur ECDSA P-256 / SHA-256 über die rohen Bytes des
-   Nutzdaten-JSON. Öffentlicher Schlüssel steht hier im Klartext –
-   das ist in Ordnung, er kann nur prüfen, nicht ausstellen.
-
-   Schlüsselformat (eine Zeile):
-     WB1.<base64url(Nutzdaten-JSON)>.<base64url(Signatur, 64 Byte)>
-
-   Nutzdaten:
-     { v:1, id:"L-2026-0007", n:"Name", e:"mail@…",
-       w:["rechnungsbuch","terminbuch"],      // freigeschaltete Werkzeuge
-       m:"kauf"|"miete", a:"2026-09-19",      // ausgestellt
-       b:"2027-09-19"|null,                   // Wartungsfenster bzw. Laufzeitende
-       s:{ "rechnungsbuch":"<base64>" } }     // optional, erst Stufe B
-
-   Stufe B ist vorbereitet: das Feld `s` trägt je Werkzeug ein
-   Geheimnis, mit dem sich ein verschlüsselt ausgelieferter
-   Codeblock aufsperren lässt. Die Signatur deckt es mit ab,
-   das Format bleibt unverändert.
-   ============================================================ */
-(function (global) {
-  'use strict';
-
-  var LS_KEY   = 'wb-lizenz';
-  var PRAEFIX  = 'WB1.';
-
-  /* Öffentlicher Schlüssel der Lizenzstelle, SPKI als Base64.
-     Wird beim Ausrollen durch den echten Wert ersetzt –
-     die Lizenzstelle zeigt ihn zum Kopieren an. */
-  var PUB_B64 = 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESwn5vJH6rMd87uKAXdmC4qXnI47PQn7lpnDtpPfzuv4bhSIp2QkxeL2RC7cVaXbnD0lZRdh6g3b+x3MYKm61Pg==';
-
-  /* ---------- Kleinkram ---------- */
-
-  function b64urlZuBytes(s) {
-    s = String(s).replace(/-/g, '+').replace(/_/g, '/');
-    while (s.length % 4) s += '=';
-    var bin = atob(s), a = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
-    return a;
-  }
-  function bytesZuB64url(a) {
-    var s = '';
-    for (var i = 0; i < a.length; i++) s += String.fromCharCode(a[i]);
-    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  }
-  function b64ZuBytes(s) {
-    var bin = atob(String(s).replace(/\s+/g, '')), a = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
-    return a;
-  }
-  function heute() {
-    var d = new Date();
-    return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
-  }
-  function tagDe(iso) {
-    if (!iso) return '';
-    var t = String(iso).split('-');
-    return t.length === 3 ? t[2] + '.' + t[1] + '.' + t[0] : iso;
-  }
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-    });
-  }
-  function lese(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  function schreibe(k, v) {
-    try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); return true; }
-    catch (e) { return false; }
-  }
-
-  /* ---------- Prüfung ---------- */
-
-  var pubCache = null;
-  function pruefbereit() { return !!(PUB_B64 && PUB_B64.indexOf('EINSETZEN') < 0); }
-  function pubKey() {
-    if (pubCache) return pubCache;
-    if (!pruefbereit()) return Promise.reject(new Error('kein-pubkey'));
-    pubCache = crypto.subtle.importKey(
-      'spki', b64ZuBytes(PUB_B64),
-      { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']
-    );
-    return pubCache;
-  }
-
-  /* Prüft einen Schlüsseltext und gibt die Nutzdaten zurück –
-     oder wirft mit einem sprechenden Grund. */
-  /* Nimmt, was eingefügt wurde, und holt den Schlüssel heraus: eine ganze
-     .wblic-Datei mit Kommentarzeilen, eine E-Mail, Zeilenumbrüche mittendrin. */
-  function saeubern(text) {
-    var roh = String(text || '').replace(/\s+/g, '');
-    /* Normalfall: der ganze Schlüssel steckt irgendwo im eingefügten Text. */
-    var m = roh.match(/WB1\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+/i);
-    if (m) return PRAEFIX + m[0].slice(4);
-    /* Vorspann unterwegs verlorengegangen – manche Felder und Zwischenablagen
-       verschlucken den Anfang. Zwei Base64url-Teile mit Punkt dazwischen sind
-       eindeutig genug; die Signatur entscheidet danach ohnehin. */
-    m = roh.match(/^(?:WB1\.?)?([A-Za-z0-9\-_]{20,})\.([A-Za-z0-9\-_]{20,})$/i);
-    if (m) return PRAEFIX + m[1] + '.' + m[2];
-    return roh;
-  }
-
-  function pruefeText(text) {
-    return Promise.resolve().then(function () {
-      var t = saeubern(text);
-      if (!t) throw new Error('leer');
-      if (t.indexOf(PRAEFIX) !== 0) {
-        /* Der Prüfschlüssel der Lizenzstelle ist reines Base64 und beginnt
-           mit MFkw – eine Verwechslung, die ohne Hinweis ratlos macht. */
-        if (/^MFkw[A-Za-z0-9+/=]+$/.test(t)) throw new Error('pruefschluessel');
-        throw new Error('format');
-      }
-      var teile = t.slice(PRAEFIX.length).split('.');
-      if (teile.length !== 2) throw new Error('format');
-      var daten = b64urlZuBytes(teile[0]);
-      var sig   = b64urlZuBytes(teile[1]);
-      return pubKey().then(function (k) {
-        return crypto.subtle.verify(
-          { name: 'ECDSA', hash: 'SHA-256' }, k, sig, daten
-        );
-      }).then(function (ok) {
-        if (!ok) throw new Error('signatur');
-        var p;
-        try { p = JSON.parse(new TextDecoder().decode(daten)); }
-        catch (e) { throw new Error('format'); }
-        if (!p || p.v !== 1 || !Array.isArray(p.w)) throw new Error('format');
-        return p;
-      });
-    });
-  }
-
-  /* Lage eines Werkzeugs. `build` ist das Veröffentlichungsdatum
-     dieser Fassung (ISO), es steht im Werkzeug selbst.
-
-     status: 'frei'        – voller Umfang
-             'nurlesen'    – Miete abgelaufen: lesen und ausgeben ja,
-                             speichern nein. Daten bleiben erreichbar.
-             'schaufenster'– keine gültige Lizenz für dieses Werkzeug   */
-  function stand(werkzeug, build) {
-    var roh = lese(LS_KEY);
-    if (!roh) return Promise.resolve({ status: 'schaufenster', grund: 'keine' });
-    return pruefeText(roh).then(function (p) {
-      var basis = {
-        name: p.n || '', email: p.e || '', nummer: p.id || '',
-        modus: p.m || 'kauf', bis: p.b || null, werkzeuge: p.w,
-        geheim: (p.s && p.s[werkzeug]) || null
-      };
-      if (p.w.indexOf(werkzeug) < 0 && p.w.indexOf('*') < 0) {
-        return Object.assign(basis, { status: 'schaufenster', grund: 'nicht-enthalten' });
-      }
-      if (basis.modus === 'miete' && basis.bis && heute() > basis.bis) {
-        return Object.assign(basis, { status: 'nurlesen', grund: 'laufzeit' });
-      }
-      /* Kauf: das Datum begrenzt nur das Wartungsfenster.
-         Eine neuere Fassung läuft weiter, weist aber darauf hin. */
-      var hinweis = basis.modus === 'kauf' && basis.bis && build && build > basis.bis;
-      return Object.assign(basis, { status: 'frei', grund: hinweis ? 'wartung' : null });
-    }).catch(function (e) {
-      return { status: 'schaufenster', grund: e.message || 'ungueltig' };
-    });
-  }
-
-  function speichern(text) {
-    return pruefeText(text).then(function (p) {
-      if (!schreibe(LS_KEY, saeubern(text))) throw new Error('speicher');
-      return p;
-    });
-  }
-  function loeschen() { schreibe(LS_KEY, null); }
-  function roh() { return lese(LS_KEY); }
-
-  /* ---------- Freischalten über die Adresse ----------
-     …/index.html#lizenz=WB1.…  schaltet beim Öffnen frei. Am Telefon ist das
-     der einzige Weg, der ohne Abtippen und ohne Dateiauswahl auskommt: Link
-     antippen, fertig. Der Schlüssel verschwindet danach aus der Adresszeile,
-     damit er nicht im Verlauf oder in einem Lesezeichen stehenbleibt. */
-  function ausUrl() {
-    try {
-      var m = (String(location.hash || '') + '&' + String(location.search || ''))
-              .match(/[#?&]lizenz=([^&#]+)/i);
-      return m ? decodeURIComponent(m[1]) : null;
-    } catch (e) { return null; }
-  }
-  function urlSaeubern() {
-    try {
-      var such = String(location.search || '').replace(/([?&])lizenz=[^&]*&?/i, '$1').replace(/[?&]$/, '');
-      var hash = String(location.hash || '').replace(/([#&])lizenz=[^&]*&?/i, '$1').replace(/[#&]$/, '');
-      history.replaceState(null, '', location.pathname + such + hash);
-    } catch (e) {}
-  }
-  /* Nimmt einen Schlüssel aus der Adresse an, falls einer dasteht.
-     Gibt die Nutzdaten zurück, null wenn keiner dastand – und wirft nie. */
-  function ausUrlUebernehmen() {
-    var t = ausUrl();
-    if (!t) return Promise.resolve(null);
-    return speichern(t).then(function (p) { urlSaeubern(); return p; },
-                             function ()  { urlSaeubern(); return null; });
-  }
-
-  var GRUENDE = {
-    keine: 'Für dieses Werkzeug liegt keine Lizenz vor.',
-    'nicht-enthalten': 'Die hinterlegte Lizenz deckt dieses Werkzeug nicht ab.',
-    signatur: 'Der Schlüssel ist beschädigt oder stammt nicht von der Lizenzstelle.',
-    format: 'Das sieht nicht nach einem Lizenzschlüssel aus – er beginnt mit „WB1.".',
-    pruefschluessel: 'Das ist der Prüfschlüssel der Lizenzstelle. Gebraucht wird hier der '
-      + 'Lizenzschlüssel aus „Lizenz ausstellen" – er beginnt mit „WB1.".',
-    leer: 'Kein Schlüssel eingegeben.',
-    laufzeit: 'Die Laufzeit ist abgelaufen – Speichern ist gesperrt, Lesen und Ausgabe bleiben möglich.',
-    wartung: 'Diese Fassung ist neuer als dein Wartungsfenster.',
-    'kein-pubkey': 'In dieser Fassung ist noch kein Prüfschlüssel hinterlegt.',
-    speicher: 'Der Browser lässt kein Speichern zu (privates Fenster?).'
-  };
-  function grundText(g) { return GRUENDE[g] || 'Die Lizenz konnte nicht geprüft werden.'; }
-
-  /* ---------- Oberfläche ---------- */
-
-  /* Alles aus den Token des Werkzeugs, mit Rückfallwerten für Umgebungen,
-     die sie nicht kennen (die Lizenzstelle). Damit zieht der Lizenzteil
-     Palette, Schrift und Hell-/Dunkelmodus der Werkbank automatisch mit. */
-  var CSS = '\
-.wbl-band{position:relative;z-index:5;display:flex;gap:12px;align-items:center;\
- padding:12px 16px;border-radius:14px;\
- font:500 14px/1.45 var(--display,system-ui,sans-serif);color:var(--text,var(--txt,#EDF0F3));\
- border:1px solid color-mix(in srgb,var(--amber,var(--accent,#F2B33D)) 45%,transparent);\
- background:color-mix(in srgb,var(--amber,var(--accent,#F2B33D)) 11%,transparent)}\
-.wbl-band b{color:var(--amber,var(--accent,#F2B33D));font-weight:700}\
-.wbl-band .wbl-sp{flex:1}\
-.wbl-band.wbl-still{margin:18px 0 0}\
-.wbl-band.wbl-ok{background:none;border:0;justify-content:center;padding:16px;\
- font:400 11.5px/1.5 var(--mono,ui-monospace,Menlo,monospace);letter-spacing:.14em;\
- text-transform:uppercase;color:var(--text-3,var(--muted-2,#6B7683))}\
-.wbl-btn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 15px;\
- border-radius:100px;border:1px solid var(--glass-edge,var(--line,rgba(255,255,255,.14)));\
- background:transparent;color:inherit;cursor:pointer;white-space:nowrap;\
- font:500 14px var(--display,system-ui,sans-serif);\
- text-transform:none;letter-spacing:0;flex-direction:row;\
- transition:background .25s,border-color .25s}\
-.wbl-btn:hover{background:var(--glass,var(--panel2,rgba(255,255,255,.07)));\
- border-color:color-mix(in srgb,var(--amber,var(--accent,#F2B33D)) 40%,transparent)}\
-.wbl-btn.wbl-pri{background:var(--amber,var(--accent,#F2B33D));border-color:transparent;\
- color:var(--ink,var(--on-accent,#12171F));font-weight:600}\
-.wbl-btn.wbl-pri:hover{filter:brightness(1.06);background:var(--amber,var(--accent,#F2B33D))}\
-.wbl-dlg{border:1px solid var(--glass-edge,var(--line,rgba(255,255,255,.14)));border-radius:20px;\
- padding:0;max-width:560px;width:calc(100% - 32px);max-height:86svh;overflow:hidden;\
- background:var(--glass-2,var(--panel,#0C1118));color:var(--text,var(--txt,#EDF0F3));\
- box-shadow:var(--shadow-lg,0 30px 80px -30px rgba(0,0,0,.85));\
- -webkit-backdrop-filter:blur(20px) saturate(1.3);backdrop-filter:blur(20px) saturate(1.3)}\
-.wbl-dlg::backdrop{background:color-mix(in srgb,#04070B 72%,transparent);\
- -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}\
-.wbl-in{display:flex;flex-direction:column;max-height:86svh;padding:0}\
-.wbl-scroll{padding:24px 24px 0;overflow:auto;min-height:0;-webkit-overflow-scrolling:touch}\
-.wbl-in h2{margin:0 0 6px;font:700 21px/1.15 var(--display,system-ui,sans-serif);\
- letter-spacing:-.03em;font-variation-settings:\'wdth\' 108}\
-.wbl-in p{margin:0 0 16px;color:var(--text-2,var(--muted,#9BA6B2));\
- font:400 15px/1.55 var(--display,system-ui,sans-serif)}\
-.wbl-in ul{margin:0 0 18px;padding-left:18px;color:var(--text-2,var(--muted,#9BA6B2));\
- font:400 14.5px/1.7 var(--display,system-ui,sans-serif)}\
-.wbl-was{margin:18px 0 6px!important;color:var(--text-3,var(--muted-2,#6B7683))!important;\
- font:400 10.5px/1.4 var(--mono,ui-monospace,Menlo,monospace)!important;\
- letter-spacing:.14em;text-transform:uppercase}\
-.wbl-in textarea{width:100%;box-sizing:border-box;min-height:96px;resize:vertical;\
- background:var(--glass,var(--panel2,rgba(255,255,255,.05)));color:var(--text,var(--txt,#EDF0F3));\
- border:1px solid var(--line,rgba(255,255,255,.12));border-radius:11px;padding:12px;\
- font:400 16px/1.45 var(--mono,ui-monospace,Menlo,monospace);word-break:break-all}\
-.wbl-in textarea:focus{outline:none;border-color:var(--amber,var(--accent,#F2B33D));\
- background:var(--glass-2,var(--panel2,rgba(255,255,255,.07)))}\
-.wbl-msg{margin:10px 0 0;min-height:18px;\
- font:500 13.5px/1.45 var(--display,system-ui,sans-serif)}\
-.wbl-msg.wbl-bad{color:var(--bad,var(--danger,var(--red-ink,#E8697D)))}\
-.wbl-msg.wbl-good{color:var(--ok,var(--teal,var(--free,var(--accent2,#63D9C4))))}\
-.wbl-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;flex:none;\
- padding:16px 24px calc(16px + env(safe-area-inset-bottom));\
- border-top:1px solid var(--line,rgba(255,255,255,.10))}\
-.wbl-row .wbl-sp{flex:1}\
-.wbl-row .wbl-txt{border:0;background:none;color:var(--text-3,var(--muted-2,#6B7683));\
- text-decoration:underline;cursor:pointer;padding:6px 2px;\
- font:500 13px var(--display,system-ui,sans-serif)}\
-.wbl-row .wbl-txt:hover{color:var(--bad,var(--danger,var(--red-ink,#E8697D)))}\
-@media (prefers-reduced-motion:reduce){.wbl-btn,.wbl-band,.wbl-dlg,.wbl-in textarea\
-{transition-duration:.001ms!important;animation-duration:.001ms!important}}';
-
-  function styleEinmal() {
-    if (document.getElementById('wbl-css')) return;
-    var s = document.createElement('style');
-    s.id = 'wbl-css'; s.textContent = CSS;
-    document.head.appendChild(s);
-  }
-
-  /* Dialog zum Freischalten. opt: {titel, werkzeug, merkmale:[…]} */
-  function dialog(opt, beiErfolg) {
-    styleEinmal();
-    var d = document.getElementById('wbl-dlg');
-    if (d) d.remove();
-    d = document.createElement('dialog');
-    d.id = 'wbl-dlg'; d.className = 'wbl-dlg';
-    d.innerHTML =
-      '<div class="wbl-in"><div class="wbl-scroll">' +
-        '<h2>' + esc(opt.titel || 'Werkzeug freischalten') + '</h2>' +
-        '<p>Schlüssel einfügen oder die Lizenzdatei wählen. Der Schlüssel gilt für ' +
-        'alle Werkzeuge, die er nennt – in diesem Browser.</p>' +
-        '<textarea id="wbl-ein" spellcheck="false" autocomplete="off" ' +
-        'autocapitalize="off" autocorrect="off" ' +
-        'placeholder="WB1.…"></textarea>' +
-        '<p class="wbl-msg" id="wbl-msg"></p>' +
-        /* Die Merkmale stehen unter dem Feld: wer den Dialog öffnet, will
-           meist einfügen, nicht lesen. */
-        (opt.merkmale && opt.merkmale.length
-          ? '<p class="wbl-was">Was dieses Werkzeug kann</p><ul>'
-            + opt.merkmale.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('')
-            + '</ul>'
-          : '') +
-      '</div>' +
-        '<div class="wbl-row">' +
-          '<label class="wbl-btn">Datei wählen' +
-            '<input type="file" id="wbl-datei" accept=".wblic,.txt,.json" hidden></label>' +
-          '<button type="button" class="wbl-txt" id="wbl-weg">Lizenz entfernen</button>' +
-          '<span class="wbl-sp"></span>' +
-          '<button type="button" class="wbl-btn" id="wbl-zu">Schließen</button>' +
-          '<button type="button" class="wbl-btn wbl-pri" id="wbl-ok">Freischalten</button>' +
-        '</div>' +
-      '</div>';
-    document.body.appendChild(d);
-
-    var feld = d.querySelector('#wbl-ein'), msg = d.querySelector('#wbl-msg');
-    function sag(t, gut) { msg.textContent = t; msg.className = 'wbl-msg ' + (gut ? 'wbl-good' : 'wbl-bad'); }
-
-    d.querySelector('#wbl-datei').addEventListener('change', function (e) {
-      var f = e.target.files && e.target.files[0];
-      if (!f) return;
-      f.text().then(function (t) {
-        var m = t.match(/WB1\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+/);
-        feld.value = m ? m[0] : t.trim();
-        sag('Datei gelesen – jetzt freischalten.', true);
-      });
-    });
-    d.querySelector('#wbl-zu').addEventListener('click', function () { d.close(); });
-    d.querySelector('#wbl-weg').addEventListener('click', function () {
-      loeschen(); sag('Lizenz entfernt.', true);
-      setTimeout(function () { location.reload(); }, 600);
-    });
-    d.querySelector('#wbl-ok').addEventListener('click', function () {
-      speichern(feld.value).then(function (p) {
-        sag('Freigeschaltet für ' + (p.n || 'dich') + '.', true);
-        if (beiErfolg) beiErfolg(p);
-        setTimeout(function () { location.reload(); }, 700);
-      }).catch(function (e) { sag(grundText(e.message)); });
-    });
-
-    var vorhanden = roh();
-    if (vorhanden) feld.value = vorhanden;
-    d.showModal();
-    feld.focus();
-    return d;
-  }
-
-  /* Band oben bzw. Zeile unten, je nach Lage.
-     opt: {werkzeug, titel, build, merkmale:[…], ziel:Element} */
-  function leiste(opt) {
-    return stand(opt.werkzeug, opt.build).then(function (s) {
-      styleEinmal();
-      var alt = document.getElementById('wbl-band');
-      if (alt) alt.remove();
-      var el = document.createElement('div');
-      el.id = 'wbl-band'; el.className = 'wbl-band';
-
-      var frei = s.status === 'frei' && s.grund !== 'wartung';
-      var ziel = (frei ? (opt.zielOk || document.body) : opt.ziel) || document.body;
-      if (opt.haftend === false && !frei) el.className += ' wbl-still';
-
-      if (frei) {
-        el.className += ' wbl-ok';
-        el.innerHTML = 'Lizenziert für ' + esc(s.name) +
-          (s.nummer ? ' · ' + esc(s.nummer) : '') +
-          (s.modus === 'miete' && s.bis ? ' · Laufzeit bis ' + tagDe(s.bis) : '');
-        ziel.appendChild(el);
-      } else {
-        var txt = (opt.text && opt.text(s)) ||
-          (s.status === 'schaufenster'
-            ? '<b>Schaufenster</b> · Speichern, Datei-Verknüpfung und Ausgabe sind gesperrt.'
-          : s.status === 'nurlesen'
-            ? '<b>Laufzeit abgelaufen</b> · Lesen und Ausgabe bleiben, Speichern ist gesperrt.'
-            : '<b>Wartungsfenster abgelaufen</b> · Diese Fassung ist neuer als deine Lizenz.');
-        el.innerHTML = txt + '<span class="wbl-sp"></span>' +
-          '<button type="button" class="wbl-btn wbl-pri" id="wbl-auf">' +
-          (s.status === 'frei' ? 'Verlängern' : 'Freischalten') + '</button>';
-        ziel.insertBefore(el, ziel.firstChild);
-        el.querySelector('#wbl-auf').addEventListener('click', function () {
-          dialog({ titel: opt.titel, werkzeug: opt.werkzeug, merkmale: opt.merkmale });
-        });
-      }
-      return s;
-    });
-  }
-
-  /* Andere offene Werkzeuge ziehen nach, sobald hier freigeschaltet wurde. */
-  global.addEventListener('storage', function (e) {
-    if (e.key === LS_KEY) location.reload();
-  });
-
-  global.WBLizenz = {
-    setzePruefschluessel: function (b64) { PUB_B64 = b64; pubCache = null; },
-    pruefbereit: pruefbereit,
-    saeubern: saeubern,
-    ausUrl: ausUrl,
-    ausUrlUebernehmen: ausUrlUebernehmen,
-    stand: stand,
-    pruefeText: pruefeText,
-    speichern: speichern,
-    loeschen: loeschen,
-    roh: roh,
-    dialog: dialog,
-    leiste: leiste,
-    grundText: grundText,
-    /* true, wenn Schreiben gesperrt ist – ein Aufruf für alle Speicherwege */
-    gesperrt: function (s) { return !s || s.status !== 'frei'; },
-    /* true, wenn gar nichts Echtes gezeigt werden darf */
-    schaufenster: function (s) { return !s || s.status === 'schaufenster'; }
-  };
-})(window);
-</script>
-<script>
-/* ============================================================
-   WBTor — Lizenztor für ein einzelnes Werkzeug
-   ------------------------------------------------------------
-   Setzt die Lizenz durch, ohne dass im Werkzeug selbst etwas
-   umgebaut werden muss. Das Tor wird VOR dem Werkzeugskript
-   eingebunden und schließt sofort; geöffnet wird erst, wenn die
-   Lizenz geprüft ist.
-
-   Im Werkzeug ist genau eine Zeile zu ändern:
-       boot();          →     WBTor.start(boot);
-
-   Drei Lagen (aus lizenz.js):
-     frei         – Tor offen, nichts wird angefasst
-     nurlesen     – eigener Bestand sichtbar, Ausgabe erlaubt,
-                    kein Schreiben
-     schaufenster – hat das Gerät schon einen eigenen Bestand,
-                    verhält es sich wie nurlesen (Daten sind nie
-                    Geisel). Sonst Beispieldaten, ohne Ausgabe.
-
-   Gesperrt wird auf vier Ebenen, damit nichts durchrutscht:
-     1. Bedienung  – Knöpfe und Formulare, die schreiben
-     2. Ablage     – localStorage-Schlüssel des Werkzeugs
-     3. Datei      – Dateiauswahl und Schreibzugriff
-     4. Ausgabe    – Druck und Export, nur im Beispielbetrieb
-   ============================================================ */
-(function (global) {
-  'use strict';
-
-  var cfg = null;          // Konfiguration des Werkzeugs
-  var lage = null;         // Lage aus WBLizenz.stand()
-  var zu = true;           // Tor geschlossen, bis geprüft
-  var beispiel = false;    // Beispieldaten statt eigenem Bestand
-  var offenOhnePruefung = false;  // Fassung ohne Prüfschlüssel
-  var eigen = new Set();   // localStorage-Schlüssel des Werkzeugs
-  var demo = {};           // Schlüssel → JSON-Text
-
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-    });
-  }
-
-  /* ── 2. Ablage ─────────────────────────────────────────── */
-  var P = global.Storage && Storage.prototype;
-  if (P) {
-    var oGet = P.getItem, oSet = P.setItem, oDel = P.removeItem;
-    P.getItem = function (k) {
-      if (this === localStorage && beispiel && Object.prototype.hasOwnProperty.call(demo, k)) return demo[k];
-      return oGet.call(this, k);
-    };
-    P.setItem = function (k, v) {
-      if (this === localStorage && zu && eigen.has(k)) return;
-      return oSet.call(this, k, v);
-    };
-    P.removeItem = function (k) {
-      if (this === localStorage && zu && eigen.has(k)) return;
-      return oDel.call(this, k);
-    };
-  }
-
-  /* ── 3. Datei ──────────────────────────────────────────── */
-  var oOpen = global.showOpenFilePicker, oSave = global.showSaveFilePicker;
-  if (oOpen) global.showOpenFilePicker = function () {
-    if (zu) return sperrfehler();
-    return oOpen.apply(global, arguments);
-  };
-  if (oSave) global.showSaveFilePicker = function () {
-    if (zu) return sperrfehler();
-    return oSave.apply(global, arguments);
-  };
-  if (global.FileSystemFileHandle && FileSystemFileHandle.prototype.createWritable) {
-    var oW = FileSystemFileHandle.prototype.createWritable;
-    FileSystemFileHandle.prototype.createWritable = function () {
-      if (zu) return sperrfehler();
-      return oW.apply(this, arguments);
-    };
-  }
-  function sperrfehler() {
-    var e = new Error('Ohne Lizenz wird nicht in Dateien geschrieben.');
-    e.name = 'AbortError';           // die Werkzeuge behandeln das still
-    dialogAuf();
-    return Promise.reject(e);
-  }
-
-  /* ── 4. Ausgabe ────────────────────────────────────────── */
-  var oPrint = global.print;
-  global.print = function () {
-    if (beispiel) { dialogAuf(); return; }
-    return oPrint.apply(global, arguments);
-  };
-
-  /* ── 1. Bedienung ──────────────────────────────────────── */
-  function trifft(el, sel) {
-    if (!sel || !el || !el.closest) return false;
-    try { return !!el.closest(sel); } catch (e) { return false; }
-  }
-  function abfangen(ev) {
-    if (!cfg) return;
-    var t = ev.target;
-    var schreibt = zu && trifft(t, cfg.schreiben);
-    var gibtAus  = beispiel && trifft(t, cfg.ausgabe);
-    if (!schreibt && !gibtAus) return;
-    ev.preventDefault();
-    ev.stopImmediatePropagation();
-    dialogAuf();
-  }
-  document.addEventListener('click', abfangen, true);
-  document.addEventListener('submit', abfangen, true);
-
-  function dialogAuf() {
-    if (!cfg || !global.WBLizenz) return;
-    WBLizenz.dialog({ titel: cfg.titel, werkzeug: cfg.werkzeug, merkmale: cfg.merkmale });
-  }
-
-  /* ── Band und Fußknopf ─────────────────────────────────── */
-  function anker() {
-    var a = document.createElement('div');
-    var nach = cfg.nach && document.querySelector(cfg.nach);
-    if (nach && nach.insertAdjacentElement) nach.insertAdjacentElement('afterend', a);
-    else {
-      var m = document.querySelector(cfg.ziel || 'main') || document.body;
-      m.insertBefore(a, m.firstChild);
-    }
-    return a;
-  }
-  function fussknopf() {
-    if (!cfg.fuss) return;
-    var f = document.querySelector(cfg.fuss);
-    if (!f) {
-      /* Manche Werkzeuge rufen start() beim Parsen auf – dann steht die
-         Fußzeile noch nicht. Einmal nachfassen, sobald sie da ist. */
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', fussknopf, { once: true });
-      }
-      return;
-    }
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.className = cfg.fussKlasse || 'pill sm';
-    b.textContent = lage && lage.status === 'frei' ? 'Lizenz' : 'Freischalten';
-    b.addEventListener('click', dialogAuf);
-    /* Vor den letzten Eintrag – der ist in allen Werkzeugen der Verweis
-       nach draußen, und davor gehört der Lizenzknopf hin. */
-    var letzter = f.lastElementChild;
-    if (letzter) f.insertBefore(b, letzter); else f.appendChild(b);
-  }
-
-  /* ── Tor ───────────────────────────────────────────────── */
-  function WBTor(k) {
-    cfg = Object.assign({
-      werkzeug: '', build: '', titel: 'Werkzeug freischalten', merkmale: [],
-      eigen: [], demo: {}, schreiben: '', ausgabe: '', nach: '', ziel: 'main', fuss: ''
-    }, k || {});
-    eigen = new Set(cfg.eigen);
-    /* Beispieldaten einmal in Text verwandeln – getItem gibt Text zurück */
-    demo = {};
-    Object.keys(cfg.demo).forEach(function (s) {
-      demo[s] = typeof cfg.demo[s] === 'string' ? cfg.demo[s] : JSON.stringify(cfg.demo[s]);
-    });
-  }
-
-  /* Liegt auf diesem Gerät schon ein eigener Bestand? Dann wird er auch
-     ohne Lizenz gezeigt – lesen und sichern bleibt immer möglich. */
-  function bestandDa() {
-    for (var i = 0; i < cfg.eigen.length; i++) {
-      try {
-        var v = localStorage.getItem(cfg.eigen[i]);
-        if (v && v.length > 40) return true;
-      } catch (e) {}
-    }
-    return false;
-  }
-
-  WBTor.start = function (starten) {
-    if (!cfg) { starten(); return; }
-    var hat = bestandDa();
-    var weiter = function (s) {
-      lage = s || { status: 'schaufenster', grund: 'keine' };
-      /* Fassung ohne hinterlegten Prüfschlüssel: das Tor kann nichts prüfen und
-         bleibt offen, weist aber unübersehbar darauf hin. So sperrt sich niemand
-         aus – und eine ungeschützte Fassung geht nicht unbemerkt ins Netz. */
-      offenOhnePruefung = lage.grund === 'kein-pubkey' ||
-        (global.WBLizenz && WBLizenz.pruefbereit && !WBLizenz.pruefbereit());
-      zu = lage.status !== 'frei' && !offenOhnePruefung;
-      beispiel = lage.status === 'schaufenster' && !hat && !offenOhnePruefung;
-      try {
-        WBLizenz.leiste({
-          werkzeug: cfg.werkzeug, build: cfg.build, titel: cfg.titel,
-          merkmale: cfg.merkmale, ziel: anker(), haftend: false,
-          /* Das Band sagt genau das, was in dieser Lage gilt. */
-          text: function (s) {
-            if (offenOhnePruefung) {
-              return '<b>Kein Prüfschlüssel hinterlegt</b> · Diese Fassung ist nicht ' +
-                     'lizenzgeschützt. In lizenz.js den Prüfschlüssel der Lizenzstelle eintragen.';
-            }
-            if (s.status === 'schaufenster') {
-              return beispiel
-                ? '<b>Schaufenster</b> · Beispieldaten. Speichern, Datei und Ausgabe sind gesperrt.'
-                : '<b>Ohne Lizenz</b> · Dein Bestand bleibt lesbar und sicherbar, Speichern ist gesperrt.';
-            }
-            return null;
-          }
-        });
-      } catch (e) {}
-      try { fussknopf(); } catch (e) {}
-      starten();
-    };
-    if (!global.WBLizenz) { weiter(null); return; }
-    var pruefen = function () {
-      WBLizenz.stand(cfg.werkzeug, cfg.build).then(weiter, function () { weiter(null); });
-    };
-    /* Steht ein Schlüssel in der Adresse, wird er zuerst übernommen. */
-    if (WBLizenz.ausUrlUebernehmen && WBLizenz.ausUrl && WBLizenz.ausUrl()) {
-      hat = true;                       // Freischaltung per Link: nie Beispieldaten
-      WBLizenz.ausUrlUebernehmen().then(pruefen, pruefen);
-    } else pruefen();
-  };
-
-  WBTor.lage = function () { return lage; };
-  WBTor.zu = function () { return zu; };
-  WBTor.beispiel = function () { return beispiel; };
-  WBTor.dialog = dialogAuf;
-
-  global.WBTor = WBTor;
-})(window);
-</script>
-
-<script>
-/* ============================================================
-   WBTorZusatz — Ergänzung zum Tor für die Werkzeuge ohne eigene
-   Knöpfe für jeden Dateiweg (seit 11.10.2026)
-   ------------------------------------------------------------
-   lizenz.js und lizenz-tor.js bleiben unverändert. Dieser Block
-   schließt die Wege, die dort nicht vorkommen:
-     · Ablegen per Ziehen          – gesperrt, solange das Tor zu ist
-     · Dateiauswahl per .click()   – gesperrt, solange das Tor zu ist
-     · Ordnerwahl                  – gesperrt, solange das Tor zu ist
-     · Herunterladen über <a download> – nur im Beispielbetrieb gesperrt
-   Muss nach lizenz-tor.js und vor dem Werkzeugskript stehen.
-   ============================================================ */
-(function (global) {
-  'use strict';
-  function zu()  { return !global.WBTor || WBTor.zu(); }
-  function bsp() { return !!(global.WBTor && WBTor.beispiel()); }
-  function auf() { if (global.WBTor && WBTor.dialog) WBTor.dialog(); }
-
-  /* Ablegen: vor jedem Werkzeug-Hörer abfangen, Hervorhebung zurücknehmen. */
-  global.addEventListener('drop', function (e) {
-    if (!zu()) return;
-    var dt = e.dataTransfer;
-    if (dt && dt.types && Array.prototype.indexOf.call(dt.types, 'Files') < 0) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    try { document.querySelectorAll('.over,.dragover,.drag-over,.is-over').forEach(function (el) {
-      el.classList.remove('over', 'dragover', 'drag-over', 'is-over');
-    }); } catch (err) {}
-    auf();
-  }, true);
-
-  /* Dateiauswahl, auch für Eingabefelder außerhalb des Dokuments. */
-  var oInClick = HTMLInputElement.prototype.click;
-  HTMLInputElement.prototype.click = function () {
-    if (this.type === 'file' && zu()) { auf(); return; }
-    return oInClick.apply(this, arguments);
-  };
-  var oPicker = HTMLInputElement.prototype.showPicker;
-  if (oPicker) HTMLInputElement.prototype.showPicker = function () {
-    if (this.type === 'file' && zu()) { auf(); return; }
-    return oPicker.apply(this, arguments);
-  };
-
-  /* Ordnerwahl */
-  var oDir = global.showDirectoryPicker;
-  if (oDir) global.showDirectoryPicker = function () {
-    if (zu()) {
-      auf();
-      var e = new Error('Ohne Lizenz wird kein Ordner verknüpft.');
-      e.name = 'AbortError';
-      return Promise.reject(e);
-    }
-    return oDir.apply(global, arguments);
-  };
-
-  /* Herunterladen – auch über Verweise, die nie im Dokument stehen. */
-  var oAClick = HTMLAnchorElement.prototype.click;
-  HTMLAnchorElement.prototype.click = function () {
-    if (bsp() && this.hasAttribute('download')) { auf(); return; }
-    return oAClick.apply(this, arguments);
-  };
-})(window);
-</script>
-<script>
-/* Lizenztor · IdeaHub freischalten */
-WBTor({
-  "werkzeug": "ideahub",
-  "build": "2026-10-11",
-  "titel": "IdeaHub freischalten",
-  "merkmale": [
-    "Ideen als Karte oder als Baum ordnen",
-    "Eigenen Ordner verknüpfen – jede Idee eine Markdown-Datei",
-    "Import und Export als Markdown oder JSON",
-    "Tags, Status und Fortschritt je Idee"
-  ],
-  "nach": "header.ihb-nav",
-  "fuss": ".ihb-nav-r",
-  "fussKlasse": "ihb-settingsbtn",
-  "eigen": [],
-  "demo": {},
-  "schreiben": "[data-role=\"folder-connect\"],[data-role=\"folder-disconnect\"],[data-role=\"import\"],[data-role=\"import-json\"],#importInput,#importJsonInput",
-  "ausgabe": "[data-role=\"export\"],[data-role=\"export-json\"]"
-});
-</script>
 <script>
 (function () {
   "use strict";
@@ -2256,21 +1623,21 @@ WBTor({
   }
   function setCluster(on) {
     state.cluster = !!on;
-    if (window.storage) window.storage.set(CLUSTER_KEY, state.cluster ? "1" : "0", false).catch(function () {});
+    storeSet(CLUSTER_KEY, state.cluster ? "1" : "0");
     renderStructure();
     renderSettingsModal();
   }
 
   function setRotate(on) {
     state.rotate = !!on;
-    if (window.storage) window.storage.set(ROTATE_KEY, state.rotate ? "1" : "0", false).catch(function () {});
+    storeSet(ROTATE_KEY, state.rotate ? "1" : "0");
     renderStructure();
     renderSettingsModal();
   }
 
   function setShowLinks(on) {
     state.showLinks = !!on;
-    if (window.storage) window.storage.set(LINKS_KEY, state.showLinks ? "1" : "0", false).catch(function () {});
+    storeSet(LINKS_KEY, state.showLinks ? "1" : "0");
     renderStructure();
     renderSettingsModal();
   }
@@ -2296,7 +1663,7 @@ WBTor({
     if (!SPEEDS[key]) return;
     state.speed = key;
     applySpeed();
-    if (window.storage) window.storage.set(SPEED_KEY, key, false).catch(function () {});
+    storeSet(SPEED_KEY, key);
     renderStructure();
     renderSettingsModal();
   }
@@ -2307,7 +1674,7 @@ WBTor({
   function setMotion(on) {
     state.motion = !!on;
     applyMotion();
-    if (window.storage) window.storage.set(MOTION_KEY, state.motion ? "1" : "0", false).catch(function () {});
+    storeSet(MOTION_KEY, state.motion ? "1" : "0");
     renderStructure();
     renderSettingsModal();
   }
@@ -2325,7 +1692,7 @@ WBTor({
     if (t !== "space" && t !== "minimal") return;
     state.theme = t;
     applyTheme();
-    if (window.storage) window.storage.set(THEME_KEY, t, false).catch(function () {});
+    storeSet(THEME_KEY, t);
     if (!vomBus) wbThemeSchreiben(t);
     renderCurrentView();
     renderSettingsModal();
@@ -3066,6 +2433,13 @@ WBTor({
   var SPEED_KEY = "speed";
   var SPEEDS = { ruhig: 2.2, mittel: 1.5, zuegig: 1 };
   var THEME_KEY = "theme";
+  var INBOX_KEY = "inbox";
+  var COMPOST_KEY = "kompost";            // kompostierte Kernideen
+  var COMPOST_DAYS_KEY = "kompostfrist";  // 30, 60 oder 90 Tage
+  var START_KEY = "startview";   // am Handy mit dem Eingang ("eingang") oder der Karte ("karte") beginnen
+  // Ab so vielen offenen Gedanken schlaegt der Eingang das Einsortieren vor
+  // (Assist: das Ueberlaufen des Kurzzeitgedaechtnisses ist das Signal).
+  var INBOX_SIGNAL = 10;
   var DETAIL_IDEAL_STEP_DEG = 36;
   var DETAIL_MAX_SPREAD_DEG = 140;
   var STATUS_ORDER = ["offen", "in-arbeit", "erledigt"];
@@ -3501,6 +2875,11 @@ WBTor({
     return map;
   }
 
+  var ringSettleQueue = [];
+  function afterRingSettles(fn) {
+    if (!ringAnim.raf) { fn(); return; }
+    ringSettleQueue.push(fn);
+  }
   function startRingTween(target) {
     // The focused idea also moves inward and changes size. Tweening that with the
     // same progress keeps it one movement instead of a turn plus two snaps.
@@ -3545,6 +2924,9 @@ WBTor({
         ringMoving = true;
         renderStructure();
         ringMoving = false;
+        var queued = ringSettleQueue;
+        ringSettleQueue = [];
+        queued.forEach(function (fn) { try { fn(); } catch (err) { /* eine Folgeaufgabe darf die Drehung nicht stoeren */ } });
       }
     }
     ringAnim.raf = requestAnimationFrame(step);
@@ -3896,12 +3278,13 @@ WBTor({
       "tags: " + tagsStr,
       "status: " + coreStatus(core) + "  # automatisch aus den Detail-Status berechnet",
       "created: " + (core.created || now),
-      "updated: " + now,
+      "updated: " + (core.updated || now),
+    ].concat(core.composted ? ["kompostiert: " + core.composted] : [], [
       "---",
       "",
       "# " + (core.text || "Unbenannte Idee"),
       "",
-    ];
+    ]);
     if ((core.notes || "").trim()) {
       lines.push("## Beschreibung", "", core.notes.trim(), "");
     }
@@ -3913,6 +3296,7 @@ WBTor({
       var meta = [];
       if (d.color && d.color !== "auto") meta.push("farbe: " + d.color);
       if (d.tags && d.tags.length) meta.push("tags: " + d.tags.join(", "));
+      if (d.created) meta.push("erstellt: " + d.created);   // aus dem Eingang einsortiert
       if (meta.length) lines.push("  {" + meta.join(" | ") + "}");
       // A detail's description follows indented underneath it, which keeps the
       // file readable in any editor and unambiguous to parse.
@@ -3976,6 +3360,7 @@ WBTor({
             var key = kv[0].trim(), val = kv.slice(1).join(":").trim();
             if (key === "farbe") last.color = val;
             else if (key === "tags") last.tags = val.split(",").map(function (t) { return t.trim(); }).filter(Boolean);
+            else if (key === "erstellt" && !isNaN(Date.parse(val))) last.created = val;
           });
           return;   // inside forEach; continue would be a syntax error
         }
@@ -3994,6 +3379,8 @@ WBTor({
       tags: meta.tags || [],
       notes: notes,
       created: meta.created,
+      updated: validIso(meta.updated),
+      composted: validIso(meta.kompostiert),
       details: details,
     };
   }
@@ -4024,6 +3411,8 @@ WBTor({
     selectedDetail: null,   // { coreId, detailId }
     editing: null,       // { kind: 'core'|'detail', coreId, id }
     draftText: "",
+    pasteDraft: null,    // { raw } eingefuegte Liste, wartet auf Bestaetigung
+    inbox: [],           // Ebene 1: [{ id, text, created }], roh festgehaltene Gedanken
     tagEditing: null,    // core id
     dirHandle: null,
     folderName: "",
@@ -4035,6 +3424,9 @@ WBTor({
     view: "map",
     motion: null,   // null = follow the system setting
     speed: "mittel",
+    compost: [],          // kompostierte Kernideen (mit composted), nicht auf der Karte
+    compostDays: 60,      // so lange unveraendert, dann zur Durchsicht vorschlagen
+    phoneStart: "eingang",   // Ebene 1 zuerst: am Handy wird festgehalten, geordnet am Rechner
   };
   var writtenFiles = new Map();
 
@@ -4286,7 +3678,7 @@ WBTor({
   }
 
   function updateHubCount() {
-    var editorActive = !!(state.tagEditing || detailEditing);
+    var editorActive = !!(state.tagEditing || detailEditing || sortSession || compostSession);
     var c = computeCounts();
     var coresCount = visibleCores().length;
     // While an idea is focused the hub carries its description: the space is
@@ -4322,6 +3714,9 @@ WBTor({
     // circle is the wrong shape for running text, and the panel gives it room.
     // Reading and editing both live inside the opened hub. The editor wins if
     // it is open, so a selection change does not throw away what you are typing.
+    // ein durch Fokuswechsel geschlossenes Display holt den Dialog zurueck
+    if (sortSession && !hubOpen && state.view !== "tree") renderSortDialog();
+    if (compostSession && !hubOpen && state.view !== "tree") renderCompostDialog();
     if (info && !editorActive) {
       openHubDisplay(
         '<div class="ihb-display-head"><span>' + escapeHtml(info.kind) + "</span>" +
@@ -4336,8 +3731,9 @@ WBTor({
       closeHubDisplay();
     }
     hubCountEl.textContent = reallySearching
-      ? c.matched + " Treffer"
+      ? c.matched + " Treffer" + inboxHitNote() + compostHitNote()
       : coresCount + " Kernideen · " + (c.total - coresCount) + " Details";
+    renderInboxDots();
   }
 
   // ---------- tag filter bar ----------
@@ -4439,40 +3835,91 @@ WBTor({
     tagFilterBar.innerHTML = html;
   }
 
-  function quickCreatePanelHtml(q) {
+  // Bei 0 Treffern: wie bisher Knopf und alle Kernideen als Ziel.
+  function quickCreateInnerHtml(p, q) {
+    var text = p.text;
+    var tagsAttr = escapeHtml(p.tags.join(","));
     var eligibleCores = state.cores.filter(function (c) { return c.details.length < MAX_DETAILS; });
     var canAddCore = state.cores.length < MAX_CORES;
-    var html = '<div class="ihb-quickcreate"><p class="ihb-note">Keine Treffer für „' + escapeHtml(q) + '"</p>';
+    var html = '<p class="ihb-note">Keine Treffer für „' + escapeHtml(q) + '"</p>';
     if (canAddCore) {
-      html += '<button type="button" class="ihb-btn primary" data-role="quickcreate-core" data-text="' + escapeHtml(q) + '">' + icon("plus", 14) + ' Als neue Kernidee anlegen</button>';
+      if (text) html += '<button type="button" class="ihb-btn primary" data-role="quickcreate-core" data-text="' + escapeHtml(text) + '" data-tags="' + tagsAttr + '">' + icon("plus", 14) + ' Als neue Kernidee anlegen</button>';
     } else {
       // Without this the button would simply vanish and leave the user guessing.
       html += '<p class="ihb-note" style="margin-top:6px;">Die Karte ist mit ' + MAX_CORES +
         ' Kernideen voll. Häng den Text als Detail an, oder lösche zuerst eine Kernidee.</p>';
     }
-    if (eligibleCores.length) {
+    if (eligibleCores.length && text) {
       html += '<p class="ihb-note" style="margin-top:6px;">…oder als Detail anlegen bei:</p><div class="ihb-chiprow">';
       eligibleCores.forEach(function (c) {
-        html += '<button type="button" class="ihb-chip" data-role="quickcreate-detail" data-core-id="' + c.id + '" data-text="' + escapeHtml(q) + '">' + escapeHtml(c.text || "Unbenannt") + '</button>';
+        html += '<button type="button" class="ihb-chip" data-role="quickcreate-detail" data-core-id="' + c.id + '" data-text="' + escapeHtml(text) + '" data-tags="' + tagsAttr + '">' + escapeHtml(c.text || "Unbenannt") + '</button>';
       });
       html += "</div>";
+    }
+    return html;
+  }
+  function capturePanelHtml(q, zeroMatches) {
+    var act = captureAction(q);
+    var p = act ? act.parsed : parseCapture(q);
+    var html = '<div class="ihb-quickcreate" data-role="capture-panel">';
+    if (act) {
+      html += '<p class="ihb-capture-preview" data-role="capture-preview" data-kind="' + act.kind + '">' +
+        (act.run ? "<kbd>Enter</kbd>" : "") + escapeHtml(act.label) + "</p>";
+    }
+    var hits = inboxMatches();
+    if (hits.length) {
+      html += '<p class="ihb-note" data-role="inbox-hits">' + (hits.length === 1 ? "1 Gedanke im Eingang passt" : hits.length + " Gedanken im Eingang passen") +
+        ' <button type="button" class="ihb-chip" data-role="open-inbox">Eingang öffnen</button></p>';
+    }
+    var kHits = compostMatches();
+    if (kHits.length) {
+      html += '<p class="ihb-note" data-role="compost-hits">' + (kHits.length === 1 ? "1 Kernidee im Kompost passt" : kHits.length + " Kernideen im Kompost passen") +
+        ' <button type="button" class="ihb-chip" data-role="open-compost">Kompost ansehen</button></p>';
+    }
+    var newTitle = act && act.kind === "core" ? p.text : act && act.kind === "core-detail" ? p.prefix : "";
+    var dups = newTitle ? similarCores(newTitle) : [];
+    if (dups.length) {
+      html += '<p class="ihb-note ihb-capture-dup" data-role="capture-dup">Mögliche Dublette – lieber öffnen?</p><div class="ihb-chiprow">';
+      dups.forEach(function (c) {
+        html += '<button type="button" class="ihb-chip" data-role="capture-open" data-core-id="' + c.id + '">' + escapeHtml(c.text || "Unbenannt") + "</button>";
+      });
+      html += "</div>";
+    }
+    if (p.prefix && p.rest) {
+      // Das Ziel steht mit dem Praefix fest; weitere Vorschlaege wuerden nur ablenken.
+    } else if (zeroMatches) {
+      html += quickCreateInnerHtml(p, q);
+    } else if (act && act.kind === "core") {
+      // was schon als Dublette angeboten wird, nicht ein zweites Mal vorschlagen
+      var sug = suggestCores(p.text).filter(function (c) { return dups.indexOf(c) === -1; });
+      if (sug.length) {
+        html += '<p class="ihb-note" style="margin-top:6px;">…oder als Detail bei:</p><div class="ihb-chiprow">';
+        sug.forEach(function (c) {
+          html += '<button type="button" class="ihb-chip" data-role="quickcreate-detail" data-core-id="' + c.id + '" data-text="' + escapeHtml(p.text) + '" data-tags="' + escapeHtml(p.tags.join(",")) + '">' + escapeHtml(c.text || "Unbenannt") + "</button>";
+        });
+        html += "</div>";
+      }
     }
     html += "</div>";
     return html;
   }
 
   function renderCaptionOrQuickCreate() {
+    if (state.pasteDraft) {
+      captionArea.innerHTML = storageWarnHtml("ihb-caption") + pastePanelHtml();
+      return;
+    }
     var q = state.query.trim();
     var c = computeCounts();
-    if (c.searching && c.matched === 0) {
-      captionArea.innerHTML = quickCreatePanelHtml(q);
+    if (q || (c.searching && c.matched === 0)) {
+      captionArea.innerHTML = storageWarnHtml("ihb-caption") + capturePanelHtml(q, c.searching && c.matched === 0);
     } else {
       var overflowNote = state.cores.length > COMFORT_CORES
         ? '<p class="ihb-caption ihb-caption-warn">' + state.cores.length + ' Kernideen auf der Karte' +
           (state.cores.length > MAX_CORES ? ' — mehr als die ' + MAX_CORES + ', die sich hier anlegen lassen' : '') +
           '. Alles wird angezeigt, die Bubbles werden dabei aber kleiner.</p>'
         : "";
-      captionArea.innerHTML = overflowNote + '<p class="ihb-caption"><b>Antippen</b> zeigt eine Idee im Hub · <b>Stift bzw. Tag-Symbol</b> klappt das Bearbeitungsfeld am Hub auf · <b>ziehen</b> sortiert um · <b>Mausrad, Kneifgeste oder Doppelklick</b> zoomen die Karte · leere Fläche ziehen verschiebt die Ansicht.</p>';
+      captionArea.innerHTML = storageWarnHtml("ihb-caption") + overflowNote + compostNoteHtml("ihb-caption") + '<p class="ihb-caption"><b>Antippen</b> zeigt eine Idee im Hub · <b>Stift bzw. Tag-Symbol</b> klappt das Bearbeitungsfeld am Hub auf · <b>ziehen</b> sortiert um · <b>Mausrad, Kneifgeste oder Doppelklick</b> zoomen die Karte · leere Fläche ziehen verschiebt die Ansicht · <b>/</b> springt ins Hub-Feld, <b>Enter</b> legt dort an, eine eingefügte Liste wird als Gliederung gelesen · <b>N</b> öffnet den Eingang für schnelle Gedanken – tippen oder diktieren, markieren und bündeln; seine Punkte oben links lassen sich antippen oder auf eine Kernidee ziehen.</p>';
     }
   }
 
@@ -4935,49 +4382,189 @@ WBTor({
     starsLayer.innerHTML = html;
   }
 
-  // ---------- persistence (chat-scoped) ----------
+  // ---------- persistence ----------
+  // Im Claude-Chat stellt der Host window.storage bereit; ueberall sonst
+  // (GitHub Pages, lokal geoeffnete Datei, Handy) gibt es nur localStorage.
+  // Beide sitzen hinter derselben Schnittstelle, damit eine Idee nirgends
+  // still verloren geht. Entschieden wird bei jedem Aufruf neu, so bleibt das
+  // Verhalten im Chat genau wie bisher. Vorrang beim Start: verbundener Ordner,
+  // dann Chat-Speicher, dann localStorage, sonst die Beispielideen.
+  // Auf GitHub Pages teilen sich alle Werkbank-Werkzeuge einen localStorage;
+  // das Praefix haelt die Schluessel von IdeaHub von denen der anderen fern.
+  var LOCAL_PREFIX = "ideahub:";
+  var localUsable = null;          // null = noch nicht geprueft
+  var storeFailed = false;         // letzter Schreibversuch gescheitert
+  var folderSuppliedCores = false; // der Ordner hat die Ideen schon geliefert
+  function localStoreUsable() {
+    if (localUsable !== null) return localUsable;
+    try {
+      var probe = LOCAL_PREFIX + "probe";
+      window.localStorage.setItem(probe, "1");
+      window.localStorage.removeItem(probe);
+      localUsable = true;
+    } catch (e) {
+      localUsable = false;   // Privatmodus, gesperrte Websitedaten, alte Hosts
+    }
+    return localUsable;
+  }
+  function storageKind() {
+    var s = window.storage;
+    if (s && typeof s.get === "function" && typeof s.set === "function") return "chat";
+    return localStoreUsable() ? "local" : "none";
+  }
+  function storeGet(key) {
+    try {
+      var kind = storageKind();
+      if (kind === "chat") return Promise.resolve(window.storage.get(key, false)).catch(function () { return null; });
+      if (kind === "local") {
+        var v = window.localStorage.getItem(LOCAL_PREFIX + key);
+        return Promise.resolve(v === null ? null : { value: v });
+      }
+    } catch (e) { /* ein gesperrter Speicher zaehlt wie ein leerer */ }
+    return Promise.resolve(null);
+  }
+  function storeSet(key, value) {
+    try {
+      var kind = storageKind();
+      if (kind === "chat") {
+        return Promise.resolve(window.storage.set(key, value, false))
+          .then(function () { noteStoreResult(true); }, function () { noteStoreResult(false); });
+      }
+      if (kind === "local") {
+        window.localStorage.setItem(LOCAL_PREFIX + key, value);
+        noteStoreResult(true);
+      }
+    } catch (e) {
+      // z. B. QuotaExceededError: ein voller Speicher darf die App nicht anhalten
+      noteStoreResult(false);
+    }
+    return Promise.resolve();
+  }
+  function noteStoreResult(ok) {
+    if (storeFailed === !ok) return;
+    storeFailed = !ok;
+    try {
+      renderCaptionOrQuickCreate();
+      if (state.view === "tree") renderTree();
+      renderSettingsModal();
+    } catch (e) { /* der Hinweis ist Beiwerk, nie ein Grund zum Abbruch */ }
+  }
+  // Was die Oberflaeche ueber den Speicher sagen muss; leer heisst: alles gut.
+  function storageWarning() {
+    if (storeFailed) {
+      return "Speichern fehlgeschlagen – der Speicher ist voll oder gesperrt. " +
+        "Sichere deine Ideen über Einstellungen → Export oder Backup.";
+    }
+    if (storageKind() === "none") {
+      return "Dieser Browser lässt kein Speichern zu – neue Ideen sind nach dem Neuladen weg. " +
+        "Sichere sie über Einstellungen → Export oder Backup.";
+    }
+    return "";
+  }
+  function storageNote() {
+    var warn = storageWarning();
+    if (warn) return warn;
+    return storageKind() === "chat"
+      ? "Ideen werden außerdem automatisch in diesem Chat gespeichert."
+      : "Ideen werden außerdem automatisch in diesem Browser gespeichert – nur auf diesem Gerät.";
+  }
+  function storageWarnHtml(cls) {
+    var warn = storageWarning();
+    return warn ? '<p class="' + cls + ' ihb-caption-warn" data-role="storage-warn">' + escapeHtml(warn) + "</p>" : "";
+  }
+
   var persistTimer = null;
   function schedulePersist() {
-    if (!state.loaded || !window.storage) return;
+    stampCoreChanges();   // jede gespeicherte Aenderung bekommt ihr Datum
+    if (!state.loaded || storageKind() === "none") return;
     clearTimeout(persistTimer);
     persistTimer = setTimeout(function () {
-      window.storage.set(STORAGE_KEY, JSON.stringify(state.cores), false).catch(function () {});
+      persistTimer = null;
+      storeSet(STORAGE_KEY, JSON.stringify(state.cores));
     }, 500);
   }
+  // Wer kurz nach dem Eintippen neu laedt oder den Tab schliesst (am Handy oft
+  // ohne Vorwarnung), wuerde sonst die letzte halbe Sekunde verlieren.
+  function flushPersist() {
+    if (!persistTimer) return;
+    clearTimeout(persistTimer);
+    persistTimer = null;
+    if (state.loaded && storageKind() !== "none") storeSet(STORAGE_KEY, JSON.stringify(state.cores));
+  }
+  window.addEventListener("pagehide", flushPersist);
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") flushPersist();
+  });
   function loadPersisted() {
-    if (!window.storage) { state.loaded = true; applyTheme(); return Promise.resolve(); }
-    return window.storage.get(THEME_KEY, false).catch(function () { return null; }).then(function (tRes) {
+    if (storageKind() === "none") { state.loaded = true; applyTheme(); return Promise.resolve(); }
+    return storeGet(THEME_KEY).then(function (tRes) {
       // Das Werkbank-Aussehen hat Vorrang vor dem alten Chat-Speicher.
       if (tRes && (tRes.value === "minimal" || tRes.value === "space") && !wbThemeLesen()) state.theme = tRes.value;
       applyTheme();
-      return window.storage.get(LINKS_KEY, false).catch(function () { return null; });
+      return storeGet(LINKS_KEY);
     }).then(function (lRes) {
       if (lRes && (lRes.value === "0" || lRes.value === "1")) state.showLinks = lRes.value === "1";
-      return window.storage.get(ROTATE_KEY, false).catch(function () { return null; });
+      return storeGet(ROTATE_KEY);
     }).then(function (rRes) {
       if (rRes && (rRes.value === "0" || rRes.value === "1")) state.rotate = rRes.value === "1";
-      return window.storage.get(CLUSTER_KEY, false).catch(function () { return null; });
+      return storeGet(CLUSTER_KEY);
     }).then(function (cRes) {
       if (cRes && (cRes.value === "0" || cRes.value === "1")) state.cluster = cRes.value === "1";
-      return window.storage.get(VIEW_KEY, false).catch(function () { return null; });
+      return storeGet(VIEW_KEY);
     }).then(function (vRes) {
       if (vRes && (vRes.value === "map" || vRes.value === "tree")) state.view = vRes.value;
-      return window.storage.get(MOTION_KEY, false).catch(function () { return null; });
+      return storeGet(MOTION_KEY);
     }).then(function (mRes) {
       if (mRes && (mRes.value === "0" || mRes.value === "1")) state.motion = mRes.value === "1";
       applyMotion();
-      return window.storage.get(SPEED_KEY, false).catch(function () { return null; });
+      return storeGet(SPEED_KEY);
     }).then(function (spRes) {
       if (spRes && SPEEDS[spRes.value]) state.speed = spRes.value;
       applySpeed();
-      return window.storage.get(STORAGE_KEY, false).catch(function () { return null; });
+      return storeGet(START_KEY);
+    }).then(function (stRes) {
+      if (stRes && (stRes.value === "eingang" || stRes.value === "karte")) state.phoneStart = stRes.value;
+      return storeGet(COMPOST_DAYS_KEY);
+    }).then(function (kdRes) {
+      if (kdRes && COMPOST_DAY_CHOICES.indexOf(Number(kdRes.value)) !== -1) state.compostDays = Number(kdRes.value);
+      return storeGet(COMPOST_KEY);
+    }).then(function (kRes) {
+      if (kRes && kRes.value) {
+        try {
+          var stored = JSON.parse(kRes.value);
+          // was der Ordner schon geliefert hat, gilt; dazu, was nur hier lag
+          if (Array.isArray(stored)) state.compost = unionById(state.compost, stored.filter(function (c) { return c && typeof c === "object"; }).map(cleanBackupCore));
+        } catch (e) { /* kaputter Eintrag: Kompost bleibt wie er ist */ }
+      }
+      return storeGet(INBOX_KEY);
+    }).then(function (iRes) {
+      if (iRes && iRes.value) {
+        try {
+          // was vor dem Laden schon festgehalten wurde, bleibt erhalten
+          var stored = cleanInbox(JSON.parse(iRes.value));
+          if (!folderSuppliedInbox) {
+            state.inbox = mergeInbox(stored, state.inbox);
+          } else {
+            // der Ordner war schneller: er gilt, dazu nur, was er noch nicht kennen konnte
+            var had = state.inbox.length;
+            state.inbox = mergeInbox(state.inbox, freshSinceFolder(stored));
+            if (state.inbox.length > had) scheduleFolderSync();
+          }
+        } catch (e) { /* kaputter Eintrag: Eingang bleibt wie er ist */ }
+      }
+      return storeGet(STORAGE_KEY);
     }).then(function (res) {
-      if (res && res.value) {
+      // Ordner und Speicher laden beim Start gleichzeitig. Hat der Ordner die
+      // Ideen schon geliefert, darf der spaeter eintreffende Speicherstand sie
+      // nicht mehr ueberschreiben: der verbundene Ordner hat Vorrang.
+      if (res && res.value && !folderSuppliedCores) {
         try {
           var parsed = JSON.parse(res.value);
           if (Array.isArray(parsed) && parsed.length) state.cores = parsed;
         } catch (e) {}
       }
+      stampCoreChanges(true);   // geladener Stand ist die Vergleichsbasis, keine Aenderung
+      dropCompostOnMap();
       state.loaded = true;
     });
   }
@@ -5021,16 +4608,20 @@ WBTor({
 
   // Reads every .md file in the connected folder into the map.
   function loadFromFolder(handle) {
-    var loaded = [], map = new Map();
+    var loaded = [], map = new Map(), inboxLoaded = null, inboxStand = null, compostLoaded = null;
     var iter = handle.entries();
     function step() {
       return iter.next().then(function (res) {
         if (res.done) return;
         var name = res.value[0], entry = res.value[1];
+        if (entry.kind === "directory" && name.toLowerCase() === COMPOST_DIR.toLowerCase()) {
+          return readCompostDir(entry).then(function (r) { compostLoaded = r; }).then(step);
+        }
         if (entry.kind === "file" && name.toLowerCase().slice(-3) === ".md") {
           return entry.getFile()
             .then(function (file) { return file.text(); })
             .then(function (text) {
+              if (isInboxMd(text, name)) { inboxLoaded = parseInboxMd(text); inboxStand = inboxMdStand(text); return; }   // nie als Kernidee
               var core = parseMdToCore(text, name);
               loaded.push(core);
               map.set(core.id, name);
@@ -5040,7 +4631,7 @@ WBTor({
         return step();
       });
     }
-    return step().then(function () { return { cores: loaded, map: map }; });
+    return step().then(function () { return { cores: loaded, map: map, inbox: inboxLoaded, inboxStand: inboxStand, compost: compostLoaded }; });
   }
 
   function adoptFolder(handle, replaceCores) {
@@ -5048,10 +4639,35 @@ WBTor({
       writtenFiles = res.map;
       state.dirHandle = handle;
       state.folderName = handle.name;
+      inboxFileKnown = !!res.inbox;
+      if (replaceCores && res.inbox) {
+        // Der Ordner ist massgeblich wie bei den Ideen. Was lokal nach seinem
+        // letzten Stand dazukam (z. B. per Link, waehrend die Freigabe fehlte), bleibt.
+        folderInboxSince = res.inboxStand ? Date.parse(res.inboxStand) : null;
+        state.inbox = mergeInbox(res.inbox, freshSinceFolder(state.inbox));
+        folderSuppliedInbox = true;
+        if (state.inbox.length > res.inbox.length) persistInbox();   // die neuen auch in die Datei
+        else if (state.loaded && storageKind() !== "none") storeSet(INBOX_KEY, JSON.stringify(state.inbox));
+        updateInboxBadge();
+        if (inboxOpen()) renderInbox();
+      }
       if (replaceCores && res.cores.length) {
         state.cores = res.cores;
+        stampCoreChanges(true);   // die Dateien bringen ihr eigenes updated mit
+        folderSuppliedCores = true;
         renderCurrentView();
         schedulePersist();
+      }
+      compostDirKnown = !!res.compost;
+      if (res.compost) compostFiles = res.compost.map;
+      if (replaceCores && res.compost) {
+        // der Ordner gilt; was nur hier im Kompost lag, bleibt und wandert hinein
+        var before = state.compost.length;
+        state.compost = unionById(res.compost.cores, state.compost);
+        dropCompostOnMap();
+        if (state.compost.length > res.compost.cores.length) persistCompost();
+        else if (state.loaded && storageKind() !== "none") storeSet(COMPOST_KEY, JSON.stringify(state.compost));
+        if (state.compost.length !== before) renderCurrentView();
       }
       state.folderStatus = res.cores.length
         ? "Verbunden · " + res.cores.length + " Dateien gelesen"
@@ -5138,6 +4754,16 @@ WBTor({
         });
       });
     });
+    chain = chain.then(function () {
+      // auch ein geleerter Eingang wird geschrieben, sonst kaeme Erledigtes zurueck
+      if (!state.inbox.length && !inboxFileKnown) return;
+      return handle.getFileHandle(INBOX_FILE, { create: true }).then(function (fh) {
+        return fh.createWritable().then(function (w) {
+          return w.write(inboxToMd(state.inbox, new Date().toISOString())).then(function () { return w.close(); });
+        });
+      }).then(function () { inboxFileKnown = true; });
+    });
+    chain = chain.then(function () { return syncCompostDir(handle); });
     return chain.then(function () {
       state.folderStatus = "Synchronisiert · " + state.cores.length + " Dateien";
       renderSettingsModal();
@@ -5204,6 +4830,10 @@ WBTor({
         URL.revokeObjectURL(url);
       }, i * 150);
     });
+    // ohne Filter gehoert der Eingang dazu; ein gefilterter Export bleibt bei den Ideen
+    if (state.inbox.length && !state.query.trim() && !state.activeTags.length) {
+      setTimeout(function () { downloadText(INBOX_FILE, inboxToMd(state.inbox)); }, filteredCores().length * 150);
+    }
   }
   function exportJson() {
     var payload = {
@@ -5213,7 +4843,9 @@ WBTor({
       theme: state.theme,
       // A backup is deliberately always complete: restoring it replaces the
       // whole map, so a filtered backup would silently destroy what it omits.
-      cores: state.cores
+      cores: state.cores,
+      inbox: state.inbox,
+      compost: state.compost
     };
     var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     var url = URL.createObjectURL(blob);
@@ -5224,6 +4856,36 @@ WBTor({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  // Bereinigt eine Kernidee aus einem Backup, damit aeltere oder von Hand
+  // bearbeitete Dateien sauber laden (auch fuer den Kompost).
+  function cleanBackupCore(c) {
+    return {
+      id: c.id || nextId(),
+      text: typeof c.text === "string" ? c.text : "",
+      subtitle: typeof c.subtitle === "string" ? c.subtitle : "",
+      icon: CORE_ICONS.hasOwnProperty(c.icon) ? c.icon : "none",
+      color: colorChoiceByKey(c.color) ? c.color : "auto",
+      tags: Array.isArray(c.tags) ? c.tags.filter(function (t) { return typeof t === "string"; }) : [],
+      notes: typeof c.notes === "string" ? c.notes : "",
+      created: c.created,
+      updated: validIso(c.updated),
+      composted: validIso(c.composted),
+      details: Array.isArray(c.details) ? c.details.filter(function (d) { return d && typeof d === "object"; }).map(function (d) {
+        return {
+          id: d.id || nextId(),
+          text: typeof d.text === "string" ? d.text : "",
+          notes: typeof d.notes === "string" ? d.notes : "",
+          status: STATUS_ORDER.indexOf(d.status) !== -1 ? d.status : "offen",
+          // colour and tags were added to details later; the restore cleaning
+          // silently dropped them from every backup until this line existed
+          color: colorChoiceByKey(d.color) ? d.color : "auto",
+          tags: Array.isArray(d.tags) ? d.tags.filter(function (t) { return typeof t === "string"; }) : [],
+          created: typeof d.created === "string" && !isNaN(Date.parse(d.created)) ? d.created : undefined
+        };
+      }) : []
+    };
   }
 
   // Restores a full backup. Replaces the current map, so it asks first.
@@ -5243,40 +4905,31 @@ WBTor({
       return false;
     }
     // normalise so older or hand-edited backups still load cleanly
-    var clean = cores.filter(function (c) { return c && typeof c === "object"; }).map(function (c) {
-      return {
-        id: c.id || nextId(),
-        text: typeof c.text === "string" ? c.text : "",
-        subtitle: typeof c.subtitle === "string" ? c.subtitle : "",
-        icon: CORE_ICONS.hasOwnProperty(c.icon) ? c.icon : "none",
-        color: colorChoiceByKey(c.color) ? c.color : "auto",
-        tags: Array.isArray(c.tags) ? c.tags.filter(function (t) { return typeof t === "string"; }) : [],
-        notes: typeof c.notes === "string" ? c.notes : "",
-        created: c.created,
-        details: Array.isArray(c.details) ? c.details.filter(function (d) { return d && typeof d === "object"; }).map(function (d) {
-          return {
-            id: d.id || nextId(),
-            text: typeof d.text === "string" ? d.text : "",
-            notes: typeof d.notes === "string" ? d.notes : "",
-            status: STATUS_ORDER.indexOf(d.status) !== -1 ? d.status : "offen",
-            // colour and tags were added to details later; the restore cleaning
-            // silently dropped them from every backup until this line existed
-            color: colorChoiceByKey(d.color) ? d.color : "auto",
-            tags: Array.isArray(d.tags) ? d.tags.filter(function (t) { return typeof t === "string"; }) : []
-          };
-        }) : []
-      };
-    });
+    var clean = cores.filter(function (c) { return c && typeof c === "object"; }).map(cleanBackupCore);
     if (!clean.length) {
       state.folderStatus = "Backup enthält keine Ideen.";
       renderSettingsModal();
       return false;
     }
     state.cores = clean;
+    stampCoreChanges(true);
+    // Ein Backup mit Eingang ersetzt auch ihn; aeltere Backups kennen keinen
+    // Eingang und lassen den vorhandenen deshalb stehen.
+    // wie beim Eingang: ein Backup mit Kompost ersetzt ihn, ein aelteres laesst ihn stehen
+    if (Array.isArray(data.compost)) {
+      state.compost = data.compost.filter(function (c) { return c && typeof c === "object"; }).map(cleanBackupCore)
+        .map(function (c) { return Object.assign(c, { composted: c.composted || new Date().toISOString() }); });
+      persistCompost();
+    }
+    if (Array.isArray(data.inbox)) {
+      state.inbox = cleanInbox(data.inbox);
+      persistInbox();
+      updateInboxBadge();
+    }
     if (data.theme === "minimal" || data.theme === "space") {
       state.theme = data.theme;
       applyTheme();
-      if (window.storage) window.storage.set(THEME_KEY, state.theme, false).catch(function () {});
+      storeSet(THEME_KEY, state.theme);
     }
     state.focusedId = null;
     state.activeTags = [];
@@ -5301,10 +4954,21 @@ WBTor({
   importInput.addEventListener("change", function (e) {
     var files = Array.prototype.slice.call(e.target.files || []);
     if (!files.length) return;
-    Promise.all(files.map(function (file) { return file.text().then(function (text) { return parseMdToCore(text, file.name); }); })).then(function (imported) {
+    Promise.all(files.map(function (file) { return file.text().then(function (text) { return { name: file.name, text: text }; }); })).then(function (list) {
       var map = new Map(state.cores.map(function (c) { return [c.id, c]; }));
-      imported.forEach(function (c) { map.set(c.id, c); });
+      var inboxIn = [];
+      list.forEach(function (f) {
+        if (isInboxMd(f.text, f.name)) { inboxIn = inboxIn.concat(parseInboxMd(f.text)); return; }   // Eingang, keine Kernidee
+        var c = parseMdToCore(f.text, f.name);
+        map.set(c.id, c);
+      });
       state.cores = Array.from(map.values());
+      stampCoreChanges(true);
+      if (inboxIn.length) {
+        state.inbox = mergeInbox(state.inbox, inboxIn);
+        persistInbox();
+        updateInboxBadge();
+      }
       importInput.value = "";
       onCoresChanged();
     });
@@ -5322,7 +4986,7 @@ WBTor({
     var id = nextId();
     state.cores = state.cores.concat([{ id: id, text: "", subtitle: "", icon: "none", color: "auto", tags: [], notes: "", details: [] }]);
     onCoresChanged();
-    enterEdit("core", null, id);
+    enterEdit("core", null, id, true);
   }
   function addDetail(coreId) {
     var core = coreById(coreId);
@@ -5332,24 +4996,301 @@ WBTor({
       return c.id === coreId ? Object.assign({}, c, { details: c.details.concat([{ id: id, text: "", status: "offen", notes: "" }]) }) : c;
     });
     onCoresChanged();
-    enterEdit("detail", coreId, id);
+    enterEdit("detail", coreId, id, true);
   }
-  function quickCreateCore(text) {
+  function mergeTags(a, b) {
+    var out = [];
+    (a || []).concat(b || []).forEach(function (t) { if (t && out.indexOf(t) === -1) out.push(t); });
+    return out;
+  }
+  function quickCreateCore(text, extraTags) {
     var value = (text || "").trim();
-    if (!value || state.cores.length >= MAX_CORES) return;
-    state.cores = state.cores.concat([{ id: nextId(), text: value, subtitle: "", icon: "none", color: "auto", tags: state.activeTags.slice(), notes: "", details: [] }]);
+    if (!value || state.cores.length >= MAX_CORES) return null;
+    var id = nextId();
+    state.cores = state.cores.concat([{ id: id, text: value, subtitle: "", icon: "none", color: "auto", tags: mergeTags(state.activeTags, extraTags), notes: "", details: [] }]);
     clearSearch();
     onCoresChanged();
+    return id;
   }
-  function quickCreateDetail(coreId, text) {
+  function quickCreateDetail(coreId, text, extraTags) {
     var value = (text || "").trim();
     var core = coreById(coreId);
-    if (!value || !core || core.details.length >= MAX_DETAILS) return;
+    if (!value || !core || core.details.length >= MAX_DETAILS) return null;
+    var id = nextId();
     state.cores = state.cores.map(function (c) {
-      return c.id === coreId ? Object.assign({}, c, { details: c.details.concat([{ id: nextId(), text: value, status: "offen", notes: "" }]) }) : c;
+      return c.id === coreId ? Object.assign({}, c, { details: c.details.concat([{ id: id, text: value, status: "offen", notes: "", tags: mergeTags([], extraTags), color: "auto" }]) }) : c;
     });
     clearSearch();
     onCoresChanged();
+    return id;
+  }
+
+  // ---------- quick capture in the hub field ----------
+  // Enter im Hub-Feld legt immer etwas an (Assist: "im Zweifel erfassen"). Die
+  // Zeile unter der Karte sagt vorher, was genau. Alles rein lexikalisch.
+  var CAPTURE_STOPWORDS = {};
+  ("und oder der die das den dem des ein eine einen einem einer eines fuer mit auf aus bei von vom zum zur "
+    + "ist sind war nicht noch auch nur als wie was wer wird werden the and for").split(" ")
+    .forEach(function (w) { CAPTURE_STOPWORDS[w] = true; });
+  function normTitle(s) {
+    return (s || "").toLowerCase().replace(/ß/g, "ss").normalize("NFKD")
+      .replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  }
+  function captureWords(s) {
+    return normTitle(s).split(" ").filter(function (w) { return w.length >= 3 && !CAPTURE_STOPWORDS[w]; });
+  }
+  function wordsMatch(a, b) {
+    if (a === b) return true;
+    var n = Math.min(a.length, b.length);
+    return n >= 4 && (a.indexOf(b) === 0 || b.indexOf(a) === 0);
+  }
+  function parseCapture(raw) {
+    var tags = [];
+    var text = (raw || "").replace(/(^|\s)#([^\s#,]+)/g, function (m, pre, tag) {
+      if (tags.indexOf(tag) === -1) tags.push(tag);
+      return pre;
+    }).replace(/\s+/g, " ").trim();
+    var res = { raw: raw || "", text: text, tags: tags, prefix: null, rest: null, target: null };
+    // Nach dem Doppelpunkt muss ein Leerzeichen stehen: "14:30" ist kein Praefix.
+    var m = text.match(/^([^:]{1,60}?):\s+(\S.*)$/);
+    if (m) {
+      res.prefix = m[1].trim();
+      res.rest = m[2].trim();
+      res.target = coreForPrefix(res.prefix);
+    }
+    return res;
+  }
+  function coreForPrefix(prefix) {
+    var p = normTitle(prefix);
+    if (!p) return null;
+    var exact = state.cores.filter(function (c) { return normTitle(c.text) === p; });
+    if (exact.length) return exact[0];
+    var starts = state.cores.filter(function (c) { return normTitle(c.text).indexOf(p) === 0; });
+    return starts.length === 1 ? starts[0] : null;
+  }
+  function exactCore(text) {
+    var n = normTitle(text);
+    if (!n) return null;
+    return state.cores.filter(function (c) { return normTitle(c.text) === n; })[0] || null;
+  }
+  function similarCores(text) {
+    var n = normTitle(text);
+    if (n.length < 4) return [];
+    var wa = captureWords(text);
+    return state.cores.filter(function (c) {
+      var t = normTitle(c.text);
+      if (!t || t === n) return false;
+      // ohne Leer- und Trennzeichen: "Marketingplan" ~ "Marketing-Plan", "Web Site" ~ "Website"
+      var nc = n.replace(/ /g, ""), tc = t.replace(/ /g, "");
+      if (Math.min(tc.length, nc.length) >= 4 && (tc.indexOf(nc) !== -1 || nc.indexOf(tc) !== -1)) return true;
+      var wb = captureWords(c.text);
+      if (!wa.length || !wb.length) return false;
+      var shared = wa.filter(function (w) { return wb.some(function (v) { return wordsMatch(w, v); }); }).length;
+      return shared / (wa.length + wb.length - shared) >= 0.6;
+    }).slice(0, 2);
+  }
+  function suggestCores(text) {
+    var words = captureWords(text);
+    if (!words.length) return [];
+    return state.cores.filter(function (c) { return c.details.length < MAX_DETAILS; }).map(function (c) {
+      var score = 0;
+      function add(src, weight) {
+        var ws = captureWords(src);
+        words.forEach(function (w) { if (ws.some(function (v) { return wordsMatch(w, v); })) score += weight; });
+      }
+      add(c.text, 3);
+      add(c.subtitle, 2);
+      add((c.tags || []).join(" "), 2);
+      add(c.details.map(function (d) { return d.text; }).join(" "), 1);
+      return { core: c, score: score };
+    }).filter(function (s) { return s.score > 0; })
+      .sort(function (a, b) { return b.score - a.score; })
+      .slice(0, 3).map(function (s) { return s.core; });
+  }
+  // Was Enter mit diesem Text tun wuerde: { kind, label, run? }
+  function captureAction(raw) {
+    var p = parseCapture(raw);
+    var tagNote = p.tags.length ? " · #" + p.tags.join(" #") : "";
+    if (p.prefix && p.rest) {
+      if (p.target) {
+        if (p.target.details.length >= MAX_DETAILS) {
+          return { kind: "inbox", parsed: p, label: "„" + p.target.text + "“ ist voll – Enter legt den Gedanken in den Eingang",
+            run: function () { addToInbox(p.raw.trim()); clearSearch(); renderCurrentView(); } };
+        }
+        return { kind: "detail", parsed: p, label: "Detail „" + p.rest + "“ bei „" + p.target.text + "“" + tagNote,
+          run: function () { quickCreateDetail(p.target.id, p.rest, p.tags); } };
+      }
+      if (state.cores.length >= MAX_CORES) {
+        return { kind: "inbox", parsed: p, label: "Die Karte ist mit " + MAX_CORES + " Kernideen voll – Enter legt den Gedanken in den Eingang",
+        run: function () { addToInbox(p.raw.trim()); clearSearch(); renderCurrentView(); } };
+      }
+      // Unbekanntes Praefix: im Zweifel erfassen statt eine Kernidee zu raten
+      return { kind: "inbox", parsed: p, label: "„" + p.prefix + "“ gibt es noch nicht – Enter legt den Gedanken in den Eingang",
+        run: function () { addToInbox(p.raw.trim()); clearSearch(); renderCurrentView(); } };
+    }
+    if (!p.text) return null;
+    var same = exactCore(p.text);
+    if (same) {
+      return { kind: "open", parsed: p, label: "öffnet „" + same.text + "“ – die gibt es schon",
+        run: function () {
+          clearSearch();
+          if (state.focusedId !== same.id) toggleFocus(same.id); else renderCurrentView();
+        } };
+    }
+    if (state.cores.length >= MAX_CORES) {
+      return { kind: "inbox", parsed: p, label: "Die Karte ist mit " + MAX_CORES + " Kernideen voll – Enter legt den Gedanken in den Eingang",
+        run: function () { addToInbox(p.raw.trim()); clearSearch(); renderCurrentView(); } };
+    }
+    return { kind: "core", parsed: p, label: "neue Kernidee „" + p.text + "“" + tagNote,
+      run: function () { quickCreateCore(p.text, p.tags); } };
+  }
+
+  // ---------- paste a whole list ----------
+  // Gelesen wird wie eine Gliederung:
+  //   "# Titel" oder "Titel:"        -> Kernidee, die folgenden Zeilen sind Details
+  //   eingerueckte Zeilen            -> Details der Zeile darueber
+  //   "Website: Impressum"           -> wie im Hub-Feld
+  //   flache Zeilen ohne Struktur    -> je eine Kernidee
+  // Aufzaehlungszeichen fallen weg, [x]/[~] setzen den Status, #tag setzt Tags.
+  // Gibt es eine Kernidee schon, landen die Details dort statt in einem Doppel.
+  function planOutline(raw) {
+    var items = [];
+    (raw || "").replace(/\r\n?/g, "\n").split("\n").forEach(function (line) {
+      if (!line.trim()) { items.push({ blank: true }); return; }
+      var exp = line.replace(/\t/g, "  ");
+      var indent = exp.match(/^ */)[0].length;
+      var t = exp.trim();
+      var heading = false, status = null;
+      var hm = t.match(/^#{1,6}\s+(.+)$/);
+      if (hm) { heading = true; t = hm[1].trim(); }
+      else {
+        t = t.replace(/^(?:[-*•–+]|\d+[.)])\s+/, "");
+        var cb = t.match(/^\[([ xX~])\]\s*(.*)$/);
+        if (cb) { status = markToStatus(cb[1]); t = cb[2].trim(); }
+      }
+      if (t) items.push({ indent: indent, text: t, heading: heading, status: status });
+    });
+    var plain = items.filter(function (it) { return !it.blank && !it.heading; });
+    var top = plain.length ? Math.min.apply(null, plain.map(function (it) { return it.indent; })) : 0;
+    var groups = [], cur = null;
+    function groupFor(title, tags, target, explicit) {
+      var key = target ? "id:" + target.id : "t:" + normTitle(title);
+      var g = groups.filter(function (x) { return x.key === key; })[0];
+      if (!g) { g = { key: key, title: title, tags: [], target: target, details: [], explicit: explicit }; groups.push(g); }
+      g.tags = mergeTags(g.tags, tags);
+      return g;
+    }
+    items.forEach(function (it) {
+      if (it.blank) {
+        // eine Leerzeile beendet eine "Titel:"-Gruppe, die schon Details hat
+        if (cur && cur.explicit === "colon" && cur.details.length) cur = null;
+        return;
+      }
+      var p = parseCapture(it.text);
+      if (!p.text) return;
+      var colonHead = !it.heading && !p.prefix && /:$/.test(p.text);
+      if (it.heading || colonHead) {
+        var title = p.text.replace(/:$/, "").trim();
+        if (!title) return;
+        cur = groupFor(title, p.tags, it.heading ? exactCore(title) : coreForPrefix(title), it.heading ? "heading" : "colon");
+        return;
+      }
+      var isTop = it.indent <= top;
+      if (cur && (!isTop || cur.explicit)) {
+        cur.details.push({ text: p.text, tags: p.tags, status: it.status || "offen" });
+        return;
+      }
+      if (p.prefix && p.rest) {
+        cur = groupFor(p.prefix, [], p.target, false);
+        cur.details.push({ text: p.rest, tags: p.tags, status: it.status || "offen" });
+        return;
+      }
+      cur = groupFor(p.text, p.tags, exactCore(p.text), false);
+    });
+    var real = groups.filter(function (g) { return !g.target || g.details.length; });
+    var newCores = real.filter(function (g) { return !g.target; }).length;
+    var nDetails = real.reduce(function (n, g) { return n + g.details.length; }, 0);
+    var toExisting = real.filter(function (g) { return g.target; }).reduce(function (n, g) { return n + g.details.length; }, 0);
+    var overfull = real.filter(function (g) {
+      return (g.target ? g.target.details.length : 0) + g.details.length > MAX_DETAILS;
+    }).map(function (g) { return g.target ? g.target.text : g.title; });
+    return { raw: raw, groups: real, newCores: newCores, nDetails: nDetails, toExisting: toExisting,
+      coresAfter: state.cores.length + newCores, overfull: overfull };
+  }
+  function applyPasteDraft() {
+    if (!state.pasteDraft) return;
+    var plan = planOutline(state.pasteDraft.raw);
+    state.pasteDraft = null;
+    if (!plan.newCores && !plan.nDetails) { renderCaptionOrQuickCreate(); return; }
+    var list = state.cores.slice();
+    plan.groups.forEach(function (g) {
+      var ds = g.details.map(function (d) {
+        return { id: nextId(), text: d.text, status: d.status, notes: "", tags: d.tags.slice(), color: "auto" };
+      });
+      if (g.target) {
+        list = list.map(function (c) {
+          return c.id === g.target.id ? Object.assign({}, c, { details: c.details.concat(ds), tags: mergeTags(c.tags, g.tags) }) : c;
+        });
+      } else {
+        list.push({ id: nextId(), text: g.title, subtitle: "", icon: "none", color: "auto",
+          tags: mergeTags(state.activeTags, g.tags), notes: "", details: ds });
+      }
+    });
+    // Wie beim Import: alles wird uebernommen, auch ueber die Grenzen hinaus.
+    state.cores = list;
+    clearSearch();
+    onCoresChanged();
+  }
+  function discardPasteDraft() {
+    state.pasteDraft = null;
+    renderCaptionOrQuickCreate();
+  }
+  function pastePanelHtml() {
+    var plan = planOutline(state.pasteDraft.raw);
+    var any = plan.newCores || plan.nDetails;
+    var html = '<div class="ihb-quickcreate" data-role="paste-panel">';
+    if (!any) {
+      html += '<p class="ihb-capture-preview" data-role="capture-preview" data-kind="paste-empty">Nichts Neues – das gibt es alles schon.</p>';
+    } else {
+      var parts = [];
+      if (plan.newCores) parts.push(plan.newCores + (plan.newCores === 1 ? " neue Kernidee" : " neue Kernideen"));
+      if (plan.nDetails) parts.push(plan.nDetails + (plan.nDetails === 1 ? " Detail" : " Details"));
+      html += '<p class="ihb-capture-preview" data-role="capture-preview" data-kind="paste"><kbd>Enter</kbd>' +
+        escapeHtml(parts.join(" und ") + " anlegen?") + "</p>";
+      if (plan.toExisting) {
+        html += '<p class="ihb-note">' + plan.toExisting + (plan.toExisting === 1 ? " davon kommt" : " davon kommen") + " zu vorhandenen Kernideen.</p>";
+      }
+    }
+    var warn = [];
+    if (plan.coresAfter > MAX_CORES) warn.push("Danach " + plan.coresAfter + " Kernideen – mehr als die " + MAX_CORES + ", die sich hier anlegen lassen.");
+    if (plan.overfull.length) warn.push("Mehr als " + MAX_DETAILS + " Details bei: " + plan.overfull.join(", ") + ".");
+    if (warn.length && any) {
+      html += '<p class="ihb-note ihb-capture-dup" data-role="paste-warn">' +
+        escapeHtml(warn.join(" ") + " Alles wird übernommen, die Bubbles werden dafür kleiner.") + "</p>";
+    }
+    html += '<ul class="ihb-paste-tree">';
+    plan.groups.slice(0, 12).forEach(function (g) {
+      html += "<li><b>" + escapeHtml(g.target ? g.target.text : g.title) + "</b>" +
+        '<span class="ihb-paste-badge">' + (g.target ? "vorhanden" : "neu") + "</span>";
+      if (g.details.length) {
+        html += "<ul>";
+        g.details.slice(0, 6).forEach(function (d) {
+          html += "<li>" + escapeHtml(d.text) +
+            (d.status !== "offen" ? '<span class="ihb-paste-badge">' + (d.status === "erledigt" ? "erledigt" : "in Arbeit") + "</span>" : "") +
+            "</li>";
+        });
+        if (g.details.length > 6) html += '<li class="ihb-paste-more">… und ' + (g.details.length - 6) + " weitere</li>";
+        html += "</ul>";
+      }
+      html += "</li>";
+    });
+    if (plan.groups.length > 12) html += '<li class="ihb-paste-more">… und ' + (plan.groups.length - 12) + " weitere Kernideen</li>";
+    html += "</ul>";
+    html += '<div class="ihb-btnrow ihb-paste-actions">' +
+      (any ? '<button type="button" class="ihb-btn primary" data-role="paste-apply">' + icon("plus", 14) + " Anlegen</button>" : "") +
+      '<button type="button" class="ihb-btn" data-role="paste-cancel">Verwerfen</button></div>';
+    html += "</div>";
+    return html;
   }
   function deleteCore(id) {
     state.cores = state.cores.filter(function (c) { return c.id !== id; });
@@ -5380,13 +5321,14 @@ WBTor({
   }
 
   // ---------- inline edit ----------
-  function enterEdit(kind, coreId, id) {
+  function enterEdit(kind, coreId, id, isNew) {
     var core = kind === "core"
       ? coreById(id)
       : coreById(coreId);
     if (!core) return;
     var text = kind === "core" ? core.text : (core.details.filter(function (d) { return d.id === id; })[0] || {}).text;
-    state.editing = { kind: kind, coreId: coreId, id: id };
+    // isNew: gerade angelegt (Geister-Bubble, Enter-Kette); chain: mit Enter beendet
+    state.editing = { kind: kind, coreId: coreId, id: id, isNew: !!isNew, chain: false };
     state.draftText = text || "";
     var selector = kind === "core"
       ? '[data-role="core"][data-core-id="' + id + '"]'
@@ -5400,13 +5342,22 @@ WBTor({
     input.addEventListener("input", function (e) { state.draftText = e.target.value; });
     input.addEventListener("blur", function () { commitEdit(); });
     input.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") { e.preventDefault(); input.blur(); }
-      if (e.key === "Escape") { cancelEdit(); }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (state.editing) state.editing.chain = true;
+        input.blur();
+      }
+      if (e.key === "Escape") {
+        // nur die Eingabe abbrechen, nicht zusaetzlich den Fokus der Karte loesen
+        e.stopPropagation();
+        cancelEdit();
+      }
     });
   }
   function commitEdit() {
     if (!state.editing) return;
     var kind = state.editing.kind, coreId = state.editing.coreId, id = state.editing.id;
+    var chain = !!(state.editing.chain && state.editing.isNew);
     var value = (state.draftText || "").trim();
     if (kind === "core") {
       if (!value) state.cores = state.cores.filter(function (c) { return c.id !== id; });
@@ -5420,8 +5371,32 @@ WBTor({
     }
     state.editing = null;
     onCoresChanged();
+    // Enter-Kette: Wer eine neue Idee mit Enter abschliesst, schreibt gleich die naechste.
+    if (chain && value) continueChain(kind, coreId, id);
+  }
+  function continueChain(kind, coreId, id) {
+    if (kind === "detail") {
+      var core = coreById(coreId);
+      if (core && core.details.length < MAX_DETAILS) addDetail(coreId);
+      return;
+    }
+    // Neue Kernidee: fokussieren und das erste Detail erst nach der Drehung
+    // oeffnen; die Drehung zeichnet am Ende neu.
+    if (!coreById(id) || state.view !== "map") return;
+    if (state.focusedId !== id) toggleFocus(id);
+    afterRingSettles(function () {
+      if (state.focusedId === id && !state.editing && state.view === "map") addDetail(id);
+    });
   }
   function cancelEdit() {
+    // Eine gerade angelegte Idee verschwindet wieder, statt als leere Blase
+    // stehen zu bleiben.
+    if (state.editing && state.editing.isNew) {
+      state.editing.chain = false;
+      state.draftText = "";
+      commitEdit();
+      return;
+    }
     state.editing = null;
     renderStructure();
   }
@@ -5703,6 +5678,8 @@ WBTor({
   function openTagEditor(coreId) {
     var core = coreById(coreId);
     if (!core) return;
+    sortSession = null;   // ein Editor beendet das Einsortieren
+    compostSession = null;
     state.tagEditing = coreId;
     detailEditing = null;
     draftIcon = core.icon || "none";
@@ -5722,6 +5699,8 @@ WBTor({
   function openDetailEditor(coreId, detailId) {
     var core = coreById(coreId);
     if (!core) return;
+    sortSession = null;
+    compostSession = null;
     var d = null;
     core.details.forEach(function (x) { if (x.id === detailId) d = x; });
     if (!d) return;
@@ -5828,6 +5807,11 @@ WBTor({
       '<button type="button" class="ihb-themeopt' + (state.theme === "space" ? " active" : "") + '" data-role="theme" data-theme="space">Dunkel</button>' +
       '<button type="button" class="ihb-themeopt' + (state.theme === "minimal" ? " active" : "") + '" data-role="theme" data-theme="minimal">Hell</button>' +
       '</div>' +
+      '<p class="ihb-note" style="margin-top:12px;">Am Handy beginnt IdeaHub mit dem Eingang: unterwegs festhalten, am Rechner ordnen.</p>' +
+      '<div class="ihb-themerow">' +
+      '<button type="button" class="ihb-themeopt' + (state.phoneStart === "eingang" ? " active" : "") + '" data-role="phonestart" data-start="eingang">Eingang zuerst</button>' +
+      '<button type="button" class="ihb-themeopt' + (state.phoneStart === "karte" ? " active" : "") + '" data-role="phonestart" data-start="karte">Karte zuerst</button>' +
+      '</div>' +
       '<p class="ihb-note" style="margin-top:12px;">Verbindungen zeigen, welche Kernideen sich Tags teilen.</p>' +
       '<div class="ihb-themerow">' +
       '<button type="button" class="ihb-themeopt' + (state.showLinks ? " active" : "") + '" data-role="links" data-on="1">Verbindungen an</button>' +
@@ -5857,6 +5841,7 @@ WBTor({
       '<button type="button" class="ihb-themeopt' + (state.speed === "mittel" ? " active" : "") + '" data-role="speed" data-speed="mittel">Mittel</button>' +
       '<button type="button" class="ihb-themeopt' + (state.speed === "zuegig" ? " active" : "") + '" data-role="speed" data-speed="zuegig">Zügig</button>' +
       '</div></div>' +
+      compostSectionHtml() +
       '<div class="ihb-section"><h3>Speicherung</h3>' +
       '<p class="ihb-note">Jede Kernidee wird als eigene .md-Datei mit Metadaten (id, Titel, Tags, Status, Zeitstempel) gespeichert; Beschreibung und Details stehen im Dateiinhalt.</p></div>' +
       '<div class="ihb-section"><h3>Ordner-Synchronisation</h3>' + folderSectionHtml + (state.folderStatus ? '<p class="ihb-status">' + escapeHtml(state.folderStatus) + "</p>" : "") + "</div>" +
@@ -5872,16 +5857,19 @@ WBTor({
       '<button type="button" class="ihb-btn" data-role="export-json">' + icon("download", 14) + " Backup speichern (JSON)</button>" +
       '<button type="button" class="ihb-btn" data-role="import-json">' + icon("upload", 14) + " Backup laden (JSON)</button>" +
       "</div></div>" +
-      '<p class="ihb-status">Ideen werden außerdem automatisch in diesem Chat gespeichert.</p>';
+      '<p class="ihb-status' + (storageWarning() ? " ihb-caption-warn" : "") + '" data-role="storage-note">' +
+      escapeHtml(storageNote()) + "</p>";
   }
 
   // ---------- search wiring ----------
   function clearSearch() {
     state.query = "";
+    state.pasteDraft = null;
     searchInput.value = "";
     clearSearchBtn.style.display = "none";
   }
   searchInput.addEventListener("input", function (e) {
+    state.pasteDraft = null;   // wer weitertippt, will die eingefuegte Liste nicht
     state.query = e.target.value;
     clearSearchBtn.style.display = state.query ? "flex" : "none";
     // The search box lives outside bubblesLayer, so rebuilding the bubble
@@ -5890,10 +5878,26 @@ WBTor({
     renderCurrentView();
   });
   searchInput.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") {
-      var c = computeCounts();
-      if (c.searching && c.matched === 0) quickCreateCore(state.query);
+    if (state.pasteDraft) {
+      if (e.key === "Enter") { e.preventDefault(); applyPasteDraft(); return; }
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); discardPasteDraft(); return; }
     }
+    if (e.key !== "Enter") return;
+    // Enter legt immer an; was genau, steht vorher in der Zeile unter der Karte.
+    var act = captureAction(state.query);
+    if (!act || !act.run) return;
+    e.preventDefault();
+    act.run();
+  });
+  // Ein einzeiliges Feld wuerde die Zeilenumbrueche verschlucken; mehrzeiliger
+  // Text wird deshalb abgefangen und als Gliederung gelesen.
+  searchInput.addEventListener("paste", function (e) {
+    var cd = e.clipboardData || window.clipboardData;
+    var text = cd ? cd.getData("text") : "";
+    if (!text || !/[\r\n]/.test(text.replace(/^\s+|\s+$/g, ""))) return;   // eine Zeile: ganz normal einfuegen
+    e.preventDefault();
+    state.pasteDraft = { raw: text };
+    renderCaptionOrQuickCreate();
   });
   clearSearchBtn.addEventListener("click", function () {
     clearSearch();
@@ -6007,7 +6011,8 @@ WBTor({
   }
 
   function isBackgroundTarget(t) {
-    return !!t && (!t.closest || (!t.closest(".ihb-bubble") && !t.closest("#hub") && !t.closest("#hubDisplay")));
+    return !!t && (!t.closest || (!t.closest(".ihb-bubble") && !t.closest("#hub") && !t.closest("#hubDisplay") &&
+      !t.closest(".ihb-inboxdots")));   // Punkte des Eingangs verschieben und zoomen die Karte nicht
   }
 
   var panState = null;
@@ -6121,23 +6126,13 @@ WBTor({
 
   function setView(view, skipRender) {
     state.view = view === "tree" ? "tree" : "map";
-    if (window.storage) window.storage.set(VIEW_KEY, state.view, false).catch(function () {});
+    if (!skipRender) storeSet(VIEW_KEY, state.view);   // beim Start nichts zurueckschreiben
     var isTree = state.view === "tree";
     if (mapEl) mapEl.hidden = isTree;
     if (treeView) treeView.hidden = !isTree;
     var capEl = document.getElementById("captionArea");
     if (capEl) capEl.hidden = isTree;
-    if (treeDetail) {
-    treeDetail.addEventListener("click", function (e) {
-      var b = e.target.closest('[data-role="tree-edit"]');
-      if (!b) return;
-      var cid = b.getAttribute("data-core-id"), did = b.getAttribute("data-detail-id");
-      if (did) openDetailEditor(cid, did); else openTagEditor(cid);
-    });
-  }
-
-
-  if (viewSwitch) {
+    if (viewSwitch) {
       var mb = viewSwitch.querySelector('[data-role="view-map"]');
       var tb = viewSwitch.querySelector('[data-role="view-tree"]');
       if (mb) mb.setAttribute("aria-selected", String(!isTree));
@@ -6150,6 +6145,18 @@ WBTor({
     }
     renderTagFilterBar();
     if (!skipRender) { renderTree(); if (!isTree) renderStructure(); }
+    renderInboxDots();
+  }
+
+  // Einmal anmelden. Frueher stand das in setView und kam bei jedem
+  // Ansichtswechsel ein weiteres Mal dazu.
+  if (treeDetail) {
+    treeDetail.addEventListener("click", function (e) {
+      var b = e.target.closest('[data-role="tree-edit"]');
+      if (!b) return;
+      var cid = b.getAttribute("data-core-id"), did = b.getAttribute("data-detail-id");
+      if (did) openDetailEditor(cid, did); else openTagEditor(cid);
+    });
   }
 
   function treeSelection() {
@@ -6243,12 +6250,18 @@ WBTor({
       treeCount.textContent = hidden
         ? shown + " von " + state.cores.length + " Kernideen"
         : state.cores.length + " Kernideen · " + state.cores.reduce(function (n, c3) { return n + c3.details.length; }, 0) + " Details";
+      if (storageWarning()) treeCount.insertAdjacentHTML("beforeend", storageWarnHtml("ihb-tree-warn"));
+      treeCount.insertAdjacentHTML("beforeend", compostNoteHtml("ihb-tree-hint"));
+      if (treeHint) treeCount.insertAdjacentHTML("beforeend", '<p class="ihb-tree-hint ihb-caption-warn" data-role="tree-hint">' + escapeHtml(treeHint) + "</p>");
     }
     renderTreeDetail();
+    if (treeEdit) mountTreeEditor();
   }
 
   function renderTreeDetail() {
     if (!treeDetail) return;
+    if (sortSession) { renderSortDialog(); return; }
+    if (compostSession) { renderCompostDialog(); return; }
     var sel = selectedDetailObj();
     var core = state.focusedId !== null ? coreById(state.focusedId) : null;
     var title, kind, notes, tags, subtitle = "";
@@ -6278,6 +6291,204 @@ WBTor({
       }).join("") + "</div>" : "");
   }
 
+  // ---------- outliner: editing straight in the tree ----------
+  // Enter legt darunter eine neue Zeile gleicher Ebene an, Tab rueckt ein
+  // (Kernidee -> letztes Detail der Kernidee darueber), Shift+Tab rueckt aus
+  // (Detail -> eigene Kernidee direkt nach der bisherigen).
+  var treeEdit = null;       // { kind, coreId, id, isNew, draft }
+  var treeEditMount = 0;     // zaehlt Neuaufbauten des Feldes
+  var treeHint = "";
+  var lastRowClick = { key: null, t: 0 };
+  function detailOf(coreId, detailId) {
+    var c = coreById(coreId);
+    return c ? (c.details.filter(function (d) { return d.id === detailId; })[0] || null) : null;
+  }
+  function startTreeEdit(kind, coreId, id, isNew) {
+    var item = kind === "core" ? coreById(id) : detailOf(coreId, id);
+    if (!item) return;
+    treeEdit = { kind: kind, coreId: kind === "core" ? id : coreId, id: id, isNew: !!isNew, draft: item.text || "" };
+    treeHint = "";
+    if (kind === "detail") treeExpanded[coreId] = true;
+    renderTree();
+  }
+  // Der Baum wird oft komplett neu gezeichnet; danach baut das hier das Feld
+  // samt Entwurf wieder auf, statt die Eingabe zu verlieren.
+  function mountTreeEditor() {
+    if (!treeEdit || !treePane || state.view !== "tree") return;
+    var sel = treeEdit.kind === "core"
+      ? '[data-role="tree-core"][data-core-id="' + treeEdit.id + '"]'
+      : '[data-role="tree-detail"][data-detail-id="' + treeEdit.id + '"]';
+    var row = treePane.querySelector(sel);
+    var label = row && row.querySelector(".ihb-tree-label");
+    if (!label) return;
+    var token = ++treeEditMount;
+    label.innerHTML = '<input class="ihb-tree-input" aria-label="Titel" value="' + escapeHtml(treeEdit.draft) + '" />';
+    var input = label.querySelector("input");
+    input.focus();
+    var end = input.value.length;
+    try { input.setSelectionRange(end, end); } catch (err) { /* aeltere Browser */ }
+    input.addEventListener("input", function () { if (treeEdit) treeEdit.draft = input.value; });
+    input.addEventListener("keydown", onTreeEditKey);
+    input.addEventListener("blur", function () {
+      // nur ein echtes Verlassen uebernimmt, kein Neuaufbau
+      setTimeout(function () {
+        if (treeEdit && token === treeEditMount && document.activeElement !== input) commitTreeEdit(false);
+      }, 0);
+    });
+  }
+  function onTreeEditKey(e) {
+    e.stopPropagation();   // Baum-Navigation, Tastenkuerzel und Escape der Karte bleiben aussen vor
+    if (!treeEdit) return;
+    if (e.key === "Enter") { e.preventDefault(); commitTreeEdit(true); }
+    else if (e.key === "Escape") { e.preventDefault(); cancelTreeEdit(); }
+    else if (e.key === "Tab") { e.preventDefault(); if (e.shiftKey) outdentTreeEdit(); else indentTreeEdit(); }
+    else if (e.key === "Backspace" && e.target.value === "") { e.preventDefault(); removeEmptyTreeRow(); }
+  }
+  function setItemText(kind, coreId, id, value) {
+    state.cores = state.cores.map(function (c) {
+      if (kind === "core") return c.id === id ? Object.assign({}, c, { text: value }) : c;
+      if (c.id !== coreId) return c;
+      return Object.assign({}, c, { details: c.details.map(function (d) { return d.id === id ? Object.assign({}, d, { text: value }) : d; }) });
+    });
+  }
+  function removeItem(kind, coreId, id) {
+    if (kind === "core") {
+      state.cores = state.cores.filter(function (c) { return c.id !== id; });
+      if (state.focusedId === id) { state.focusedId = null; state.selectedDetail = null; }
+      return;
+    }
+    state.cores = state.cores.map(function (c) {
+      return c.id === coreId ? Object.assign({}, c, { details: c.details.filter(function (d) { return d.id !== id; }) }) : c;
+    });
+    if (state.selectedDetail && state.selectedDetail.detailId === id) state.selectedDetail = null;
+  }
+  function insertCoreAfter(afterId, core) {
+    if (state.cores.length >= MAX_CORES) return null;
+    var fresh = core || { id: nextId(), text: "", subtitle: "", icon: "none", color: "auto", tags: state.activeTags.slice(), notes: "", details: [] };
+    var idx = -1;
+    state.cores.forEach(function (c, i) { if (c.id === afterId) idx = i; });
+    var list = state.cores.slice();
+    list.splice(idx === -1 ? list.length : idx + 1, 0, fresh);
+    state.cores = list;
+    return fresh.id;
+  }
+  function insertDetailAfter(coreId, afterId, detail) {
+    var core = coreById(coreId);
+    if (!core) return null;
+    var d = detail || { id: nextId(), text: "", status: "offen", notes: "", tags: [], color: "auto" };
+    var idx = -1;
+    core.details.forEach(function (x, i) { if (x.id === afterId) idx = i; });
+    var ds = core.details.slice();
+    ds.splice(idx === -1 ? ds.length : idx + 1, 0, d);
+    state.cores = state.cores.map(function (c) { return c.id === coreId ? Object.assign({}, c, { details: ds }) : c; });
+    return d.id;
+  }
+  function commitTreeEdit(next) {
+    var t = treeEdit;
+    if (!t) return;
+    treeEdit = null;
+    treeHint = "";
+    var value = (t.draft || "").trim();
+    if (!value) {
+      var keep = t.kind === "core" && !t.isNew && (coreById(t.id) || { details: [] }).details.length;
+      // leer = loeschen wie auf der Karte; eine Kernidee mit Details bleibt aber stehen
+      if (!keep) removeItem(t.kind, t.coreId, t.id);
+      onCoresChanged();
+      return;
+    }
+    setItemText(t.kind, t.coreId, t.id, value);
+    if (next) {
+      var newId = null;
+      if (t.kind === "core") newId = insertCoreAfter(t.id);
+      else if ((coreById(t.coreId) || { details: [] }).details.length < MAX_DETAILS) newId = insertDetailAfter(t.coreId, t.id);
+      if (newId) treeEdit = { kind: t.kind, coreId: t.kind === "core" ? newId : t.coreId, id: newId, isNew: true, draft: "" };
+      else treeHint = t.kind === "core"
+        ? "Die Karte ist mit " + MAX_CORES + " Kernideen voll."
+        : "„" + coreById(t.coreId).text + "“ hat schon " + MAX_DETAILS + " Details.";
+    }
+    onCoresChanged();   // zeichnet den Baum und baut das naechste Feld auf
+  }
+  function cancelTreeEdit() {
+    var t = treeEdit;
+    treeEdit = null;
+    treeHint = "";
+    if (t && t.isNew) { removeItem(t.kind, t.coreId, t.id); onCoresChanged(); return; }
+    renderTree();
+  }
+  function flashTreeHint(msg) {
+    treeHint = msg;
+    renderTree();
+  }
+  function indentTreeEdit() {
+    var t = treeEdit;
+    if (!t || t.kind !== "core") return;   // Details haben keine tiefere Ebene
+    var idx = -1;
+    state.cores.forEach(function (c, i) { if (c.id === t.id) idx = i; });
+    var core = state.cores[idx], prev = state.cores[idx - 1];
+    if (!core) return;
+    if (!prev) { flashTreeHint("Die oberste Kernidee kann nicht eingerückt werden."); return; }
+    if (core.details.length) { flashTreeHint("„" + (t.draft || core.text) + "“ hat eigene Details und bleibt deshalb Kernidee."); return; }
+    if (prev.details.length >= MAX_DETAILS) { flashTreeHint("„" + prev.text + "“ hat schon " + MAX_DETAILS + " Details."); return; }
+    var d = { id: core.id, text: core.text, status: "offen", notes: core.notes || "", tags: (core.tags || []).slice(), color: core.color || "auto" };
+    removeItem("core", null, core.id);
+    insertDetailAfter(prev.id, null, d);
+    treeEdit = { kind: "detail", coreId: prev.id, id: d.id, isNew: t.isNew, draft: t.draft };
+    treeExpanded[prev.id] = true;
+    treeHint = "";
+    onCoresChanged();
+  }
+  function outdentTreeEdit() {
+    var t = treeEdit;
+    if (!t || t.kind !== "detail") return;
+    if (state.cores.length >= MAX_CORES) { flashTreeHint("Die Karte ist mit " + MAX_CORES + " Kernideen voll."); return; }
+    var d = detailOf(t.coreId, t.id);
+    if (!d) return;
+    removeItem("detail", t.coreId, t.id);
+    insertCoreAfter(t.coreId, { id: d.id, text: d.text, subtitle: "", icon: "none", color: d.color || "auto",
+      tags: (d.tags || []).slice(), notes: d.notes || "", details: [] });
+    treeEdit = { kind: "core", coreId: d.id, id: d.id, isNew: t.isNew, draft: t.draft };
+    treeHint = "";
+    onCoresChanged();
+  }
+  function removeEmptyTreeRow() {
+    var t = treeEdit;
+    if (!t) return;
+    if (t.kind === "core" && (coreById(t.id) || { details: [] }).details.length) return;   // nicht mitsamt Details
+    var rows = Array.prototype.slice.call(treePane.querySelectorAll('[data-role="tree-core"], [data-role="tree-detail"]'));
+    var cur = treePane.querySelector(t.kind === "core"
+      ? '[data-role="tree-core"][data-core-id="' + t.id + '"]'
+      : '[data-role="tree-detail"][data-detail-id="' + t.id + '"]');
+    var prevRow = rows[rows.indexOf(cur) - 1];
+    treeEdit = null;
+    treeHint = "";
+    removeItem(t.kind, t.coreId, t.id);
+    if (prevRow) {
+      var pk = prevRow.getAttribute("data-role") === "tree-core" ? "core" : "detail";
+      var pc = prevRow.getAttribute("data-core-id"), pd = prevRow.getAttribute("data-detail-id");
+      var item = pk === "core" ? coreById(pc) : detailOf(pc, pd);
+      if (item) treeEdit = { kind: pk, coreId: pc, id: pk === "core" ? pc : pd, isNew: false, draft: item.text || "" };
+    }
+    onCoresChanged();
+  }
+  function treeNewCore() {
+    var last = state.cores.length ? state.cores[state.cores.length - 1].id : null;
+    var id = insertCoreAfter(last);
+    if (!id) return;
+    treeEdit = { kind: "core", coreId: id, id: id, isNew: true, draft: "" };
+    treeHint = "";
+    onCoresChanged();
+  }
+  function treeNewDetail(coreId) {
+    var core = coreById(coreId);
+    if (!core || core.details.length >= MAX_DETAILS) return;
+    var last = core.details.length ? core.details[core.details.length - 1].id : null;
+    var id = insertDetailAfter(coreId, last);
+    treeExpanded[coreId] = true;
+    treeEdit = { kind: "detail", coreId: coreId, id: id, isNew: true, draft: "" };
+    treeHint = "";
+    onCoresChanged();
+  }
+
   function treeSelectCore(id) {
     state.selectedDetail = null;
     state.focusedId = state.focusedId === id ? null : id;
@@ -6295,6 +6506,7 @@ WBTor({
 
   if (treePane) {
     treePane.addEventListener("click", function (e) {
+      if (e.target.tagName === "INPUT") return;   // Klick ins Zeilenfeld
       var tw = e.target.closest('[data-role="tree-toggle"]');
       if (tw) {
         var cid = tw.getAttribute("data-core-id");
@@ -6314,17 +6526,7 @@ WBTor({
           if (aDet) { state.focusedId = aCore; state.selectedDetail = { coreId: aCore, detailId: aDet }; openDetailEditor(aCore, aDet); }
           else { state.focusedId = aCore; state.selectedDetail = null; openTagEditor(aCore); }
         } else if (role === "tree-add") {
-          treeExpanded[aCore] = true;
-          var before = (coreById(aCore) || { details: [] }).details.length;
-          addDetail(aCore);
-          state.editing = null;   // the tree edits in its pane, not inline on the map
-          var core2 = coreById(aCore);
-          if (core2 && core2.details.length > before) {
-            var fresh = core2.details[core2.details.length - 1];
-            state.focusedId = aCore;
-            state.selectedDetail = { coreId: aCore, detailId: fresh.id };
-            openDetailEditor(aCore, fresh.id);
-          }
+          treeNewDetail(aCore);   // neue Zeile direkt im Baum (Gliederungsmodus)
         } else if (role === "tree-delete") {
           var label = aDet
             ? ((coreById(aCore) || { details: [] }).details.filter(function (x) { return x.id === aDet; })[0] || {}).text
@@ -6334,37 +6536,49 @@ WBTor({
           if (!aDet && state.focusedId === aCore) { state.focusedId = null; state.selectedDetail = null; }
           renderTree();
         } else if (role === "tree-newcore") {
-          var beforeN = state.cores.length;
-          addCore();
-          state.editing = null;
-          if (state.cores.length > beforeN) {
-            var fresh2 = state.cores[state.cores.length - 1];
-            state.focusedId = fresh2.id;
-            state.selectedDetail = null;
-            openTagEditor(fresh2.id);
-          }
+          treeNewCore();
         }
         return;
       }
       var row = e.target.closest("[data-role]");
       if (!row) return;
-      if (row.getAttribute("data-role") === "tree-core") treeSelectCore(row.getAttribute("data-core-id"));
-      else if (row.getAttribute("data-role") === "tree-detail")
-        treeSelectDetail(row.getAttribute("data-core-id"), row.getAttribute("data-detail-id"));
+      var rKind = row.getAttribute("data-role");
+      if (rKind !== "tree-core" && rKind !== "tree-detail") return;
+      var rKey = rKind + ":" + (row.getAttribute("data-detail-id") || row.getAttribute("data-core-id"));
+      var now = Date.now();
+      // Zweiter Klick auf denselben Titel: bearbeiten. Ein eigener Doppelklick,
+      // weil der erste Klick den Baum neu zeichnet und dblclick dabei verloren geht.
+      if (lastRowClick.key === rKey && now - lastRowClick.t < 450 && e.target.closest(".ihb-tree-label")) {
+        lastRowClick = { key: null, t: 0 };
+        if (rKind === "tree-core") startTreeEdit("core", null, row.getAttribute("data-core-id"), false);
+        else startTreeEdit("detail", row.getAttribute("data-core-id"), row.getAttribute("data-detail-id"), false);
+        return;
+      }
+      lastRowClick = { key: rKey, t: now };
+      if (rKind === "tree-core") treeSelectCore(row.getAttribute("data-core-id"));
+      else treeSelectDetail(row.getAttribute("data-core-id"), row.getAttribute("data-detail-id"));
     });
     // Arrow keys walk the tree the way a tree widget is expected to behave.
     treePane.addEventListener("keydown", function (e) {
+      if (e.target.tagName === "INPUT") return;   // das Zeilenfeld hat eigene Tasten
       var row = e.target.closest("[data-role]");
       if (!row) return;
-      var rows = Array.prototype.slice.call(treePane.querySelectorAll("[data-role]"))
-        .filter(function (r) { return r.getAttribute("data-role") !== "tree-toggle"; });
-      var idx = rows.indexOf(row);
+      // Nur die Zeilen selbst und die Neu-Zeile. Seit v3.0 liefen die Pfeiltasten
+      // sonst ueber Stift, Plus und Papierkorb jeder Zeile.
+      var rows = Array.prototype.slice.call(treePane.querySelectorAll(
+        '[data-role="tree-core"], [data-role="tree-detail"], [data-role="tree-newcore"]'));
+      var idx = rows.indexOf(e.target.closest('[data-role="tree-core"], [data-role="tree-detail"], [data-role="tree-newcore"]'));
+      if (idx === -1) return;
       if (e.key === "ArrowDown" && idx < rows.length - 1) { e.preventDefault(); rows[idx + 1].focus(); }
       else if (e.key === "ArrowUp" && idx > 0) { e.preventDefault(); rows[idx - 1].focus(); }
       else if (e.key === "ArrowRight" && row.getAttribute("data-role") === "tree-core") {
         e.preventDefault(); treeExpanded[row.getAttribute("data-core-id")] = true; renderTree();
       } else if (e.key === "ArrowLeft" && row.getAttribute("data-role") === "tree-core") {
         e.preventDefault(); treeExpanded[row.getAttribute("data-core-id")] = false; renderTree();
+      } else if (e.key === "F2") {
+        e.preventDefault();
+        if (row.getAttribute("data-role") === "tree-core") startTreeEdit("core", null, row.getAttribute("data-core-id"), false);
+        else if (row.getAttribute("data-role") === "tree-detail") startTreeEdit("detail", row.getAttribute("data-core-id"), row.getAttribute("data-detail-id"), false);
       } else if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         if (row.getAttribute("data-role") === "tree-core") treeSelectCore(row.getAttribute("data-core-id"));
@@ -6581,6 +6795,21 @@ WBTor({
     if (e.target.tagName === "INPUT") return;
     handleBubbleActivate(e.target);
   });
+  // / oder N springt von ueberall ins Hub-Feld (Assist: pro Oberflaeche ein
+  // schnellster Weg). Nicht, waehrend man in einem Feld tippt.
+  document.addEventListener("keydown", function (e) {
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key !== "/" && e.key !== "n" && e.key !== "N") return;
+    var t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+    if (state.editing || state.tagEditing || detailEditing) return;
+    if (settingsModal.classList.contains("open") || inboxOpen()) return;
+    e.preventDefault();
+    if (e.key === "n" || e.key === "N") { openInbox(); return; }   // N = neuer Gedanke in den Eingang
+    if (state.view === "tree") setView("map");   // das Hub-Feld gibt es nur auf der Karte
+    searchInput.focus();
+    searchInput.select();
+  });
   document.addEventListener("keydown", function (e) {
     // Escape steps back out, innermost first: focus, then the cloud, then modals.
     if (e.key === "Escape" && !state.tagEditing &&
@@ -6600,10 +6829,21 @@ WBTor({
 
   // ---------- quick-create panel interaction ----------
   captionArea.addEventListener("click", function (e) {
+    if (e.target.closest('[data-role="open-inbox"]')) { openInbox(); return; }
+    if (e.target.closest('[data-role="paste-apply"]')) { applyPasteDraft(); return; }
+    if (e.target.closest('[data-role="paste-cancel"]')) { discardPasteDraft(); return; }
+    function tagsOf(el) { return (el.getAttribute("data-tags") || "").split(",").filter(Boolean); }
     var coreBtn = e.target.closest('[data-role="quickcreate-core"]');
-    if (coreBtn) { quickCreateCore(coreBtn.getAttribute("data-text")); return; }
+    if (coreBtn) { quickCreateCore(coreBtn.getAttribute("data-text"), tagsOf(coreBtn)); return; }
     var detailBtn = e.target.closest('[data-role="quickcreate-detail"]');
-    if (detailBtn) { quickCreateDetail(detailBtn.getAttribute("data-core-id"), detailBtn.getAttribute("data-text")); return; }
+    if (detailBtn) { quickCreateDetail(detailBtn.getAttribute("data-core-id"), detailBtn.getAttribute("data-text"), tagsOf(detailBtn)); return; }
+    var openBtn = e.target.closest('[data-role="capture-open"]');
+    if (openBtn) {
+      var oid = openBtn.getAttribute("data-core-id");
+      clearSearch();
+      if (state.focusedId !== oid) toggleFocus(oid); else renderCurrentView();
+      return;
+    }
   });
 
   // ---------- settings / details modal interaction ----------
@@ -6660,6 +6900,7 @@ WBTor({
     else if (role === "cluster") setCluster(t.getAttribute("data-on") === "1");
     else if (role === "motion") setMotion(t.getAttribute("data-on") === "1");
     else if (role === "speed") setSpeed(t.getAttribute("data-speed"));
+    else if (role === "phonestart") setPhoneStart(t.getAttribute("data-start"));
     else if (role === "folder-connect") connectFolder();
     else if (role === "folder-disconnect") disconnectFolder();
     else if (role === "folder-reload") reloadFromFolder();
@@ -6674,6 +6915,1180 @@ WBTor({
     if (detailEditing || state.tagEditing) closeHubEditor();
     else if (settingsModal.classList.contains("open")) closeSettings();
   });
+
+  // ---------- Ebene 1: Eingang (Gedankenliste) ----------
+  // Roh festhalten, spaeter einsortieren (Assist: Erfassen ist nicht Ordnen).
+  // Der Eingang kennt keine Grenzen; die gelten erst fuer die Karte.
+  var inboxSheet = document.getElementById("inboxSheet");
+  var inboxInput = document.getElementById("inboxInput");
+  var inboxList = document.getElementById("inboxList");
+  var inboxBtn = document.getElementById("inboxBtn");
+  var inboxCountEl = document.getElementById("inboxCount");
+  var sortSession = null;   // { queue: [ids], done, total, candidates }
+
+  function cleanInbox(list) {
+    if (!Array.isArray(list)) return [];
+    return list.filter(function (x) { return x && typeof x === "object" && typeof x.text === "string" && x.text.trim(); })
+      .map(function (x) {
+        return {
+          id: typeof x.id === "string" && x.id ? x.id : nextId(),
+          text: x.text.trim(),
+          created: typeof x.created === "string" && !isNaN(Date.parse(x.created)) ? x.created : new Date().toISOString()
+        };
+      });
+  }
+  function persistInbox() {
+    // vor dem Laden nicht: sonst ueberschriebe der leere Startzustand den Speicher
+    scheduleFolderSync();
+    if (!state.loaded || storageKind() === "none") return;
+    storeSet(INBOX_KEY, JSON.stringify(state.inbox));
+  }
+  function inboxItem(id) {
+    return state.inbox.filter(function (x) { return x.id === id; })[0] || null;
+  }
+  function addToInbox(text) {
+    var t = (text || "").trim();
+    if (!t) return null;
+    var item = { id: nextId(), text: t, created: new Date().toISOString() };
+    state.inbox = state.inbox.concat([item]);
+    persistInbox();
+    updateInboxBadge();
+    if (inboxOpen()) renderInbox();
+    return item.id;
+  }
+  function removeFromInbox(id) {
+    state.inbox = state.inbox.filter(function (x) { return x.id !== id; });
+    persistInbox();
+    updateInboxBadge();
+  }
+  function updateInboxBadge() {
+    if (!inboxBtn) return;
+    var n = state.inbox.length;
+    inboxCountEl.textContent = String(n);
+    inboxBtn.classList.toggle("is-empty", n === 0);
+    inboxBtn.classList.toggle("is-full", n >= INBOX_SIGNAL);
+    inboxBtn.setAttribute("title", n >= INBOX_SIGNAL
+      ? n + " Gedanken warten – Zeit zum Einsortieren"
+      : (n === 1 ? "1 Gedanke im Eingang" : n + " Gedanken im Eingang"));
+    inboxBtn.setAttribute("aria-label", "Eingang öffnen, " + n + (n === 1 ? " Gedanke" : " Gedanken"));
+    renderInboxDots();
+  }
+  function inboxOpen() { return !!(inboxSheet && inboxSheet.classList.contains("open")); }
+  // opts.noFocus: zum Start am Handy nicht gleich die Tastatur aufklappen
+  function openInbox(opts) {
+    if (!inboxSheet) return;
+    if (sortSession) endSort();
+    if (compostSession) endCompost();
+    inboxSheet.classList.add("open");
+    dictationNote = "";
+    renderInbox();
+    renderDictation();
+    if (!opts || !opts.noFocus) inboxInput.focus();
+  }
+  function closeInbox() {
+    if (inboxSheet) inboxSheet.classList.remove("open");
+    inboxPicks = [];       // eine Auswahl gilt nur, solange die Flaeche offen ist
+    stopDictation();       // nie unbemerkt weiterhoeren
+  }
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+  function fmtTime(iso) { var d = new Date(iso); return pad2(d.getHours()) + ":" + pad2(d.getMinutes()); }
+  function fmtDay(iso) {
+    var d = new Date(iso), today = new Date(), y = new Date();
+    y.setDate(today.getDate() - 1);
+    function same(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+    if (same(d, today)) return "Heute";
+    if (same(d, y)) return "Gestern";
+    return pad2(d.getDate()) + "." + pad2(d.getMonth() + 1) + "." + d.getFullYear();
+  }
+  function oldestFirst(a, b) { return Date.parse(a.created) - Date.parse(b.created); }
+  function renderInbox() {
+    if (!inboxList) return;
+    inboxPicks = inboxPicks.filter(function (id) { return !!inboxItem(id); });
+    var n = state.inbox.length;
+    document.getElementById("inboxTitle").textContent = n ? "Eingang · " + n + (n === 1 ? " Gedanke" : " Gedanken") : "Eingang";
+    if (!n) {
+      inboxList.innerHTML = '<p class="ihb-note ihb-inbox-empty">Noch nichts im Eingang. Was dir einfällt: tippen, Enter, weiter – einsortiert wird später.</p>';
+      return;
+    }
+    var html = "", lastDay = null, q = state.query.trim().toLowerCase();
+    state.inbox.slice().sort(oldestFirst).reverse().forEach(function (it) {
+      var day = fmtDay(it.created);
+      if (day !== lastDay) { html += '<div class="ihb-inbox-day">' + escapeHtml(day) + "</div>"; lastDay = day; }
+      var hit = q && it.text.toLowerCase().indexOf(q) !== -1;
+      var pick = inboxPicks.indexOf(it.id);
+      html += '<div class="ihb-inbox-row' + (hit ? " is-match" : "") + (pick !== -1 ? " is-picked" : "") + '" data-role="inbox-item" data-id="' + it.id + '">' +
+        '<button type="button" class="ihb-inbox-pick" data-role="inbox-pick" data-id="' + it.id + '" aria-pressed="' + (pick !== -1) +
+        '" aria-label="' + (pick !== -1 ? "Markierung aufheben" : "Markieren") + '">' + (pick !== -1 ? pick + 1 : "") + "</button>" +
+        '<span class="ihb-inbox-handle" data-role="inbox-handle" data-id="' + it.id + '" title="Auf eine Kernidee ziehen">⠿</span>' +
+        '<span class="ihb-inbox-time">' + fmtTime(it.created) + "</span>" +
+        '<span class="ihb-inbox-text">' + escapeHtml(it.text) +
+        (pick === 0 && inboxPicks.length > 1 ? ' <span class="ihb-inbox-badge">Titel</span>' : "") + "</span>" +
+        '<button type="button" class="ihb-chip" data-role="inbox-sort" data-id="' + it.id + '">Einsortieren</button>' +
+        '<button type="button" class="ihb-inbox-drop" data-role="inbox-drop" data-id="' + it.id + '" aria-label="Verwerfen" title="Verwerfen">' + icon("x", 12) + "</button>" +
+        "</div>";
+    });
+    if (inboxPicks.length) html += pickBarHtml();
+    else html += '<div class="ihb-btnrow ihb-paste-actions"><button type="button" class="ihb-btn primary" data-role="inbox-sort-all">' +
+      (n >= INBOX_SIGNAL ? "Zeit zum Einsortieren – alle (" + n + ")" : "Alle einsortieren (" + n + ")") + "</button></div>";
+    inboxList.innerHTML = html;
+  }
+
+  // ---------- Einsortieren: von Ebene 1 auf die Karte ----------
+  function coreScores(text) {
+    var words = captureWords(text);
+    if (!words.length) return [];
+    return state.cores.map(function (c) {
+      var score = 0;
+      function add(src, weight) {
+        var ws = captureWords(src);
+        words.forEach(function (w) { if (ws.some(function (v) { return wordsMatch(w, v); })) score += weight; });
+      }
+      add(c.text, 3);
+      add(c.subtitle, 2);
+      add((c.tags || []).join(" "), 2);
+      add(c.details.map(function (d) { return d.text; }).join(" "), 1);
+      return { core: c, score: score };
+    }).filter(function (s) { return s.score > 0; })
+      .sort(function (a, b) { return b.score - a.score; });
+  }
+  function sortCandidates(p) {
+    // ein bekanntes Praefix ("Recht: ...") steht immer vorn, auch wenn die Kernidee voll ist
+    var list = p.target ? [p.target] : [];
+    coreScores(p.prefix && p.rest ? p.prefix + " " + p.rest : p.text).forEach(function (s) {
+      if (list.indexOf(s.core) === -1) list.push(s.core);
+    });
+    return list.slice(0, 3);
+  }
+  function startSort(ids) {
+    var queue = ids.filter(function (id) { return !!inboxItem(id); });
+    if (!queue.length) return;
+    closeInbox();
+    state.tagEditing = null;
+    detailEditing = null;
+    compostSession = null;
+    sortSession = { queue: queue, done: 0, total: queue.length, candidates: [] };
+    renderSortDialog();
+  }
+  function currentSortItem() {
+    if (!sortSession) return null;
+    while (sortSession.queue.length && !inboxItem(sortSession.queue[0])) sortSession.queue.shift();
+    return sortSession.queue.length ? inboxItem(sortSession.queue[0]) : null;
+  }
+  function renderSortDialog() {
+    var it = currentSortItem();
+    if (!it) { endSort(); return; }
+    var p = parseCapture(it.text);
+    var cands = sortCandidates(p);
+    sortSession.candidates = cands;
+    var canNew = state.cores.length < MAX_CORES;
+    var newLabel = p.prefix && p.rest && !p.target ? "Neue Kernidee „" + p.prefix + "“" : "Neue Kernidee";
+    var others = state.cores.filter(function (c) { return cands.indexOf(c) === -1 && c.details.length < MAX_DETAILS; });
+    var html =
+      '<div class="ihb-display-head"><span>Einsortieren · ' + (sortSession.done + 1) + " von " + sortSession.total +
+      " · " + escapeHtml(fmtDay(it.created) + " " + fmtTime(it.created)) + "</span>" +
+      '<button type="button" data-role="sort-close" aria-label="Einsortieren beenden">&#10005;</button></div>' +
+      '<div class="ihb-sort" data-role="sort-dialog" tabindex="-1">' +
+      '<input id="sortText" class="ihb-taginput" aria-label="Gedanke" value="' + escapeHtml(it.text) + '" />' +
+      (cands.length
+        ? '<p class="ihb-note">Passt zu:</p><div class="ihb-chiprow">' + cands.map(function (c, i) {
+            var full = c.details.length >= MAX_DETAILS;
+            return '<button type="button" class="ihb-chip' + (full ? " is-full" : "") + '" data-role="sort-to" data-core-id="' + c.id + '"' +
+              (full ? " disabled" : "") + "><kbd>" + (i + 1) + "</kbd>" + escapeHtml(c.text || "Unbenannt") +
+              (full ? '<span class="ihb-sort-full">voll</span>' : "") + "</button>";
+          }).join("") + "</div>"
+        : '<p class="ihb-note">Keine passende Kernidee gefunden.</p>') +
+      (others.length
+        ? '<select id="sortOther" class="ihb-taginput" aria-label="Andere Kernidee"><option value="">Andere Kernidee …</option>' +
+          others.map(function (c) { return '<option value="' + c.id + '">' + escapeHtml(c.text || "Unbenannt") + "</option>"; }).join("") +
+          "</select>"
+        : "") +
+      '<div class="ihb-chiprow ihb-sort-actions">' +
+      '<button type="button" class="ihb-chip" data-role="sort-new"' + (canNew ? "" : " disabled") + "><kbd>N</kbd>" + escapeHtml(newLabel) + "</button>" +
+      '<button type="button" class="ihb-chip" data-role="sort-later"><kbd>S</kbd>Später</button>' +
+      '<button type="button" class="ihb-chip" data-role="sort-drop"><kbd>Entf</kbd>Verwerfen</button>' +
+      "</div></div>";
+    openHubDisplay(html);
+    var host = editorHost();
+    var box = host && host.querySelector('[data-role="sort-dialog"]');
+    if (box) box.focus();
+  }
+  function sortTextValue() {
+    var host = editorHost();
+    var el = host && host.querySelector("#sortText");
+    return el ? el.value.trim() : "";
+  }
+  function takeSortItem() {
+    var it = currentSortItem();
+    if (!it) return null;
+    return { item: it, text: sortTextValue() || it.text };
+  }
+  function advanceSort() {
+    if (!sortSession) return;
+    sortSession.queue.shift();
+    sortSession.done++;
+    renderSortDialog();
+  }
+  // Ein Gedanke wird Detail einer Kernidee bzw. eigene Kernidee. Genutzt vom
+  // Dialog und vom Ziehen; der Zeitstempel wandert jeweils mit.
+  // from: Bildschirmpunkt { x, y }, von dem aus der Gedanke zur Kernidee sinkt
+  function assignInboxToCore(itemId, coreId, editedText, from) {
+    var item = inboxItem(itemId);
+    var core = coreById(coreId);
+    if (!item || !core || core.details.length >= MAX_DETAILS) return false;
+    var p = parseCapture(editedText || item.text);
+    var pt = p.prefix && p.rest ? coreForPrefix(p.prefix) : null;
+    var text = pt && pt.id === core.id ? p.rest : p.text;
+    if (!text) return false;
+    var d = { id: nextId(), text: text, status: "offen", notes: "", tags: p.tags.slice(), color: "auto", created: item.created };
+    state.cores = state.cores.map(function (c) { return c.id === core.id ? Object.assign({}, c, { details: c.details.concat([d]) }) : c; });
+    removeFromInbox(item.id);
+    onCoresChanged();
+    if (state.view === "map") sinkIntoCore(core.id, text, from);
+    return true;
+  }
+  function assignInboxToNewCore(itemId, editedText, from) {
+    var item = inboxItem(itemId);
+    if (!item || state.cores.length >= MAX_CORES) return null;
+    var p = parseCapture(editedText || item.text);
+    var id = nextId();
+    var fresh;
+    if (p.prefix && p.rest && !p.target) {
+      // "Garten: Hochbeet bauen" -> Kernidee "Garten" mit diesem Detail
+      fresh = { id: id, text: p.prefix, subtitle: "", icon: "none", color: "auto", tags: [], notes: "", created: item.created,
+        details: [{ id: nextId(), text: p.rest, status: "offen", notes: "", tags: p.tags.slice(), color: "auto", created: item.created }] };
+    } else {
+      if (!p.text) return null;
+      fresh = { id: id, text: p.text, subtitle: "", icon: "none", color: "auto", tags: p.tags.slice(), notes: "", created: item.created, details: [] };
+    }
+    state.cores = state.cores.concat([fresh]);
+    removeFromInbox(item.id);
+    onCoresChanged();
+    if (state.view === "map") sinkIntoCore(id, p.text || item.text, from);
+    return id;
+  }
+  // Mitte des Textfelds im Dialog; vor dem Weiterschalten messen
+  function sortSourcePoint() {
+    var f = document.getElementById("sortText");
+    if (!f || state.view !== "map") return null;
+    var r = f.getBoundingClientRect();
+    return r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+  }
+  function sortTo(coreId) {
+    var s = takeSortItem(), from = sortSourcePoint();
+    if (s && assignInboxToCore(s.item.id, coreId, s.text, from)) advanceSort();
+  }
+  function sortNew() {
+    var s = takeSortItem(), from = sortSourcePoint();
+    if (s && assignInboxToNewCore(s.item.id, s.text, from)) advanceSort();
+  }
+  function sortLater() {
+    var s = takeSortItem();
+    if (!s) return;
+    if (s.text !== s.item.text) {   // eine geaenderte Fassung bleibt erhalten
+      state.inbox = state.inbox.map(function (x) { return x.id === s.item.id ? Object.assign({}, x, { text: s.text }) : x; });
+      persistInbox();
+    }
+    advanceSort();
+  }
+  function sortDrop() {
+    var s = takeSortItem();
+    if (!s) return;
+    removeFromInbox(s.item.id);
+    advanceSort();
+  }
+  function endSort() {
+    if (!sortSession) return;
+    sortSession = null;
+    if (state.view === "tree") { renderTreeDetail(); return; }
+    closeHubDisplay();
+    updateHubCount();
+  }
+  function handleSortClick(e) {
+    if (!sortSession) return;
+    var t = e.target.closest("[data-role]");
+    if (!t || t.disabled) return;
+    var role = t.getAttribute("data-role");
+    if (role === "sort-close") endSort();
+    else if (role === "sort-to") sortTo(t.getAttribute("data-core-id"));
+    else if (role === "sort-new") sortNew();
+    else if (role === "sort-later") sortLater();
+    else if (role === "sort-drop") sortDrop();
+  }
+  function handleSortChange(e) {
+    if (sortSession && e.target && e.target.id === "sortOther" && e.target.value) sortTo(e.target.value);
+  }
+  hubDisplay.addEventListener("click", handleSortClick);
+  hubDisplay.addEventListener("change", handleSortChange);
+  if (treeDetail) {
+    treeDetail.addEventListener("click", handleSortClick);
+    treeDetail.addEventListener("change", handleSortChange);
+  }
+  // Tasten im Dialog: in der Einfangphase, damit sie vor den uebrigen Kuerzeln greifen.
+  document.addEventListener("keydown", function (e) {
+    if (!sortSession || e.ctrlKey || e.metaKey || e.altKey) return;
+    var t = e.target;
+    var inField = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT");
+    if (e.key === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); endSort(); return; }
+    if (inField) {
+      if (e.key === "Enter" && t.id === "sortText") {
+        // zurueck zu den Tasten, die geaenderte Fassung gilt fuer die naechste Wahl
+        e.preventDefault();
+        var host = editorHost();
+        var box = host && host.querySelector('[data-role="sort-dialog"]');
+        if (box) box.focus();
+      }
+      return;
+    }
+    var k = e.key;
+    if (k === "1" || k === "2" || k === "3") {
+      var c = sortSession.candidates[Number(k) - 1];
+      if (c && c.details.length < MAX_DETAILS) sortTo(c.id);
+    } else if (k === "n" || k === "N") sortNew();
+    else if (k === "s" || k === "S") sortLater();
+    else if (k === "Delete") sortDrop();
+    else return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, true);
+
+  if (inboxBtn) inboxBtn.addEventListener("click", openInbox);
+  if (inboxSheet) {
+    inboxSheet.addEventListener("click", function (e) {
+      if (e.target === inboxSheet) { closeInbox(); return; }
+      var t = e.target.closest("[data-role]");
+      if (!t) return;
+      var role = t.getAttribute("data-role"), id = t.getAttribute("data-id");
+      if (role === "inbox-close") closeInbox();
+      else if (role === "inbox-sort") startSort([id]);
+      else if (role === "inbox-sort-all") startSort(state.inbox.slice().sort(oldestFirst).map(function (x) { return x.id; }));
+      else if (role === "inbox-drop") {
+        var it = inboxItem(id);
+        if (it && window.confirm("„" + it.text + "“ verwerfen?")) { removeFromInbox(id); renderInbox(); }
+      }
+    });
+    inboxSheet.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeInbox(); }
+    });
+  }
+  if (inboxInput) inboxInput.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    if (addToInbox(inboxInput.value)) { inboxInput.value = ""; renderInbox(); }
+  });
+
+  // ---------- Ebene 1 auf der Karte: Punkte, Suche, Ziehen ----------
+  var inboxDotsEl = document.getElementById("inboxDots");
+  function inboxMatches() {
+    var q = state.query.trim().toLowerCase();
+    if (!q) return [];
+    return state.inbox.filter(function (x) { return x.text.toLowerCase().indexOf(q) !== -1; });
+  }
+  function inboxHitNote() {
+    var n = inboxMatches().length;
+    return n ? " · " + n + " im Eingang" : "";
+  }
+  // Plaetze in der linken oberen Ecke, die sicher ausserhalb des Kreises liegen:
+  // dort zeichnet die Karte nie, die Kollisionspruefung bleibt unberuehrt. Oben,
+  // weil die Karte am Rechner oft tiefer reicht als das Fenster.
+  function inboxDotSlots(W) {
+    var r = 6, step = 17, pad = 12, slots = [];
+    for (var row = 0; row < 8; row++) {
+      for (var col = 0; col < 8; col++) {
+        var x = pad + col * step, y = pad + row * step;
+        var dx = x - W / 2, dy = y - W / 2;
+        if (Math.sqrt(dx * dx + dy * dy) >= W / 2 + r + 8) slots.push({ x: x, y: y, k: row + col, row: row });
+      }
+    }
+    slots.sort(function (a, b) { return a.k - b.k || a.row - b.row; });
+    return slots.slice(0, 15);
+  }
+  function renderInboxDots() {
+    if (!inboxDotsEl) return;
+    var W = layout.width;
+    if (!W || !state.inbox.length || state.view === "tree") { inboxDotsEl.innerHTML = ""; return; }
+    var slots = inboxDotSlots(W);
+    if (!slots.length) { inboxDotsEl.innerHTML = ""; return; }
+    var items = state.inbox.slice().sort(oldestFirst);   // die aeltesten sitzen der Ecke am naechsten
+    var show = items.length > slots.length ? slots.length - 1 : items.length;
+    var q = state.query.trim().toLowerCase();
+    var html = "";
+    for (var i = 0; i < show; i++) {
+      var it = items[i], s = slots[i];
+      var hit = q && it.text.toLowerCase().indexOf(q) !== -1;
+      html += '<button type="button" class="ihb-inboxdot' + (q ? (hit ? " is-match" : " is-dim") : "") + '" data-role="inbox-dot" data-id="' + it.id +
+        '" style="left:' + s.x + "px;top:" + s.y + 'px" title="' + escapeHtml(it.text) + '" aria-label="Gedanke im Eingang: ' + escapeHtml(it.text) + '"></button>';
+    }
+    if (items.length > show) {
+      var s2 = slots[show];
+      html += '<button type="button" class="ihb-inboxmore" data-role="inbox-more" style="left:' + s2.x + "px;top:" + s2.y +
+        'px" title="Eingang öffnen">+' + (items.length - show) + "</button>";
+    }
+    inboxDotsEl.innerHTML = html;
+  }
+  if (inboxDotsEl) inboxDotsEl.addEventListener("click", function (e) {
+    if (e.target.closest('[data-role="inbox-more"]')) { openInbox(); return; }
+    // Enter oder Leertaste auf einem Punkt: ein Klick ohne Zeiger (detail 0);
+    // Maus und Finger erledigt schon das Loslassen
+    var dot = e.target.closest('[data-role="inbox-dot"]');
+    if (dot && e.detail === 0) startSort([dot.getAttribute("data-id")]);
+  });
+
+  // Ziehen: von einem Punkt oder am Griff einer Zeile im Eingang auf eine
+  // Kernidee (Detail) oder den Plus-Platz (neue Kernidee).
+  var inboxDrag = null;
+  var suppressClickUntil = 0;
+  function inboxDropTarget(x, y) {
+    var el = document.elementFromPoint(x, y);
+    if (!el || !el.closest) return null;
+    var core = el.closest('[data-role="core"]');
+    if (core) return { el: core, coreId: core.getAttribute("data-core-id") };
+    var det = el.closest('[data-role="detail"]');
+    if (det) {
+      var cid = det.getAttribute("data-core-id");
+      return { el: bubblesLayer.querySelector('[data-role="core"][data-core-id="' + cid + '"]') || det, coreId: cid };
+    }
+    var gh = el.closest('[data-role="ghost-core"]');
+    if (gh) return { el: gh, newCore: true };
+    return null;
+  }
+  function endInboxDrag() {
+    var d = inboxDrag;
+    inboxDrag = null;
+    if (!d) return null;
+    if (d.ghost && d.ghost.parentNode) d.ghost.parentNode.removeChild(d.ghost);
+    if (d.target && d.target.el) d.target.el.classList.remove("ihb-droptarget");
+    if (inboxSheet) inboxSheet.classList.remove("is-dragging");
+    return d;
+  }
+  document.addEventListener("pointerdown", function (e) {
+    var t = e.target && e.target.closest && e.target.closest('[data-role="inbox-dot"], [data-role="inbox-handle"]');
+    if (!t || (e.button !== undefined && e.button !== 0)) return;
+    inboxDrag = { id: t.getAttribute("data-id"), x0: e.clientX, y0: e.clientY, moved: false, ghost: null, target: null,
+      fromSheet: t.getAttribute("data-role") === "inbox-handle", isDot: t.getAttribute("data-role") === "inbox-dot" };
+    e.preventDefault();   // kein Markieren, keine Mausersatz-Ereignisse fuer die Karte
+  });
+  document.addEventListener("pointermove", function (e) {
+    var d = inboxDrag;
+    if (!d) return;
+    if (!d.moved) {
+      var mx = e.clientX - d.x0, my = e.clientY - d.y0;
+      if (mx * mx + my * my < 36) return;   // erst ab 6 px ist es Ziehen
+      d.moved = true;
+      var it = inboxItem(d.id);
+      var g = document.createElement("div");
+      g.className = "ihb-inbox-ghost";
+      g.textContent = it ? it.text : "";
+      document.body.appendChild(g);
+      d.ghost = g;
+      // die Glasflaeche wird durchsichtig und laesst die Karte darunter greifen
+      if (d.fromSheet && inboxSheet) inboxSheet.classList.add("is-dragging");
+    }
+    d.ghost.style.left = e.clientX + "px";
+    d.ghost.style.top = e.clientY + "px";
+    var tgt = inboxDropTarget(e.clientX, e.clientY);
+    if (d.target && d.target.el && (!tgt || tgt.el !== d.target.el)) d.target.el.classList.remove("ihb-droptarget");
+    if (tgt && tgt.el) tgt.el.classList.add("ihb-droptarget");
+    d.target = tgt;
+  });
+  document.addEventListener("pointerup", function (e) {
+    var d = endInboxDrag();
+    if (!d) return;
+    if (!d.moved) {
+      if (d.isDot) startSort([d.id]);
+      return;
+    }
+    // der Klick, den der Browser gleich nach dem Loslassen schickt, gehoert zum Ziehen;
+    // das Fenster ist kurz, damit der naechste echte Klick durchkommt
+    suppressClickUntil = Date.now() + 120;
+    if (d.target) {
+      var at = { x: e.clientX, y: e.clientY };   // dort, wo losgelassen wurde, taucht er ein
+      if (d.target.newCore) assignInboxToNewCore(d.id, null, at);
+      else assignInboxToCore(d.id, d.target.coreId, null, at);
+    }
+    if (inboxOpen()) renderInbox();
+  });
+  document.addEventListener("pointercancel", endInboxDrag);
+  document.addEventListener("click", function (e) {
+    if (Date.now() < suppressClickUntil) { e.stopPropagation(); e.preventDefault(); }
+  }, true);
+
+  // ---------- Eingang.md: Export, Import, Ordner ----------
+  // Lesbar in jedem Editor und in Obsidian: Tagesueberschriften, je Gedanke eine
+  // offene Checkbox mit Uhrzeit. Abgehakte Zeilen gelten als erledigt.
+  var INBOX_FILE = "Eingang.md";
+  var inboxFileKnown = false;      // der verbundene Ordner hat (oder hatte) eine Eingang.md
+  var folderSuppliedInbox = false; // der Ordner hat den Eingang beim Start geliefert
+  var folderInboxSince = null;     // "stand" der gelesenen Eingang.md (ms) oder null
+  // stand = wann IdeaHub die Datei zuletzt geschrieben hat. Damit laesst sich beim
+  // Verbinden unterscheiden: ein lokaler Gedanke, der in der Datei fehlt, ist
+  // entweder erledigt (aelter als stand) oder neu und noch nicht geschrieben.
+  function inboxToMd(list, stand) {
+    var lines = ["---", "typ: eingang"].concat(stand ? ["stand: " + stand] : []).concat(["---", "", "# Eingang", ""]);
+    var lastDay = null;
+    list.slice().sort(oldestFirst).forEach(function (it) {
+      var d = new Date(it.created);
+      var day = d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+      if (day !== lastDay) { if (lastDay) lines.push(""); lines.push("## " + day); lastDay = day; }
+      lines.push("- [ ] " + fmtTime(it.created) + " " + it.text.replace(/\s*\r?\n\s*/g, " "));
+    });
+    lines.push("");
+    return lines.join("\n");
+  }
+  function isInboxMd(text, filename) {
+    if (/^eingang\.md$/i.test(filename || "")) return true;
+    var fm = (text || "").match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    return !!fm && /(^|\n)typ:\s*eingang\s*($|\r?\n)/i.test(fm[1]);
+  }
+  function parseInboxMd(text) {
+    var out = [], day = null;
+    (text || "").replace(/\r\n?/g, "\n").split("\n").forEach(function (line) {
+      var h = line.match(/^##\s+(\d{4})-(\d{2})-(\d{2})\s*$/);
+      if (h) { day = [Number(h[1]), Number(h[2]) - 1, Number(h[3])]; return; }
+      var m = line.match(/^\s*[-*]\s+(?:\[([ xX~])\]\s+)?(?:(\d{1,2}):(\d{2})\s+)?(.+)$/);
+      if (!m || !m[4].trim() || (m[1] && /x/i.test(m[1]))) return;   // abgehakt = erledigt
+      var dt = day ? new Date(day[0], day[1], day[2], m[2] ? Number(m[2]) : 0, m[3] ? Number(m[3]) : 0) : new Date();
+      out.push({ id: nextId(), text: m[4].trim(), created: dt.toISOString() });
+    });
+    return out;
+  }
+  function inboxMdStand(text) {
+    var fm = (text || "").match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    var m = fm && fm[1].match(/(?:^|\n)stand:\s*(\S+)/);
+    return m && !isNaN(Date.parse(m[1])) ? m[1] : null;
+  }
+  // lokale Gedanken, die die Datei des Ordners noch nicht kennen konnte; ohne
+  // stand (von Hand angelegt) lieber alle behalten als einen verlieren
+  function freshSinceFolder(list) {
+    if (folderInboxSince === null) return list;
+    return list.filter(function (x) { return Date.parse(x.created) > folderInboxSince; });
+  }
+  // gleich ist, was denselben Text zur selben Minute hat
+  function mergeInbox(a, b) {
+    var seen = {}, out = [];
+    a.concat(b).forEach(function (x) {
+      var key = x.text + "|" + new Date(x.created).toISOString().slice(0, 16);
+      if (seen[key]) return;
+      seen[key] = true;
+      out.push(x);
+    });
+    return out;
+  }
+  function downloadText(name, text) {
+    var blob = new Blob([text], { type: "text/markdown" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // ---------- Eingang: markieren und buendeln ----------
+  // Die Reihenfolge des Antippens zaehlt: der erste markierte Gedanke wird
+  // beim Buendeln der Titel, die uebrigen werden seine Details.
+  var inboxPicks = [];
+  function bundleCheck(ids) {
+    if (ids.length < 2) return "Zum Bündeln mindestens zwei markieren – der erste wird der Titel.";
+    if (ids.length - 1 > MAX_DETAILS) return "Höchstens " + (MAX_DETAILS + 1) + " bündeln: ein Titel und " + MAX_DETAILS + " Details.";
+    if (state.cores.length >= MAX_CORES) return "Die Karte ist mit " + MAX_CORES + " Kernideen voll – „Markierte einsortieren“ hängt sie an vorhandene.";
+    return "";
+  }
+  function shortText(t, n) { return t.length > n ? t.slice(0, n - 1) + "…" : t; }
+  function pickBarHtml() {
+    var why = bundleCheck(inboxPicks);
+    var note = why;
+    if (!why) {
+      var head = inboxItem(inboxPicks[0]), k = inboxPicks.length - 1;
+      note = "„" + shortText(parseCapture(head.text).text || head.text, 40) + "“ wird Kernidee mit " + k + (k === 1 ? " Detail." : " Details.");
+    }
+    return '<div class="ihb-inbox-pickbar" data-role="inbox-pickbar"><p class="ihb-note" data-role="bundle-preview">' + escapeHtml(note) + "</p>" +
+      '<div class="ihb-btnrow ihb-paste-actions">' +
+      '<button type="button" class="ihb-btn primary" data-role="inbox-bundle"' + (why ? " disabled" : "") + ">Zur Kernidee bündeln</button>" +
+      '<button type="button" class="ihb-btn" data-role="inbox-sort-picked">Markierte einsortieren (' + inboxPicks.length + ")</button>" +
+      '<button type="button" class="ihb-btn" data-role="inbox-unpick">Auswahl aufheben</button></div></div>';
+  }
+  function bundleInbox(ids) {
+    var items = ids.map(inboxItem).filter(Boolean);
+    if (bundleCheck(items.map(function (x) { return x.id; }))) return null;
+    var head = parseCapture(items[0].text);
+    var id = nextId();
+    var fresh = { id: id, text: head.text || items[0].text, subtitle: "", icon: "none", color: "auto", tags: head.tags.slice(), notes: "",
+      created: items[0].created,
+      details: items.slice(1).map(function (it) {
+        var p = parseCapture(it.text);
+        return { id: nextId(), text: p.text || it.text, status: "offen", notes: "", tags: p.tags.slice(), color: "auto", created: it.created };
+      }) };
+    state.cores = state.cores.concat([fresh]);
+    items.forEach(function (it) { removeFromInbox(it.id); });
+    onCoresChanged();
+    if (state.view === "map") energyFromCore(id);
+    return id;
+  }
+  var inboxNoticeTimer = null;
+  function setInboxNotice(text) {
+    var el = document.getElementById("inboxNotice");
+    if (!el) return;
+    el.textContent = text;
+    clearTimeout(inboxNoticeTimer);
+    if (text) inboxNoticeTimer = setTimeout(function () { el.textContent = ""; }, 6000);
+  }
+  if (inboxSheet) inboxSheet.addEventListener("click", function (e) {
+    var t = e.target.closest && e.target.closest("[data-role]");
+    if (!t) return;
+    var role = t.getAttribute("data-role"), id = t.getAttribute("data-id");
+    if (role === "inbox-pick") {
+      var at = inboxPicks.indexOf(id);
+      if (at === -1) inboxPicks.push(id); else inboxPicks.splice(at, 1);
+      renderInbox();
+      // mit der Tastatur (Klick ohne Zeiger) geht es an derselben Stelle weiter
+      var again = e.detail === 0 && inboxList.querySelector('[data-role="inbox-pick"][data-id="' + id + '"]');
+      if (again) again.focus();
+    } else if (role === "inbox-unpick") {
+      inboxPicks = [];
+      renderInbox();
+    } else if (role === "inbox-sort-picked") {
+      startSort(inboxPicks.slice());
+    } else if (role === "inbox-bundle") {
+      var n = inboxPicks.length - 1;
+      var newId = bundleInbox(inboxPicks);
+      if (!newId) return;
+      inboxPicks = [];
+      renderInbox();
+      var c = coreById(newId);
+      setInboxNotice("„" + shortText(c.text, 40) + "“ mit " + n + (n === 1 ? " Detail" : " Details") + " auf der Karte.");
+    } else if (role === "inbox-mic") {
+      toggleDictation();
+    }
+  });
+
+  // ---------- Eingang: Spracheingabe ----------
+  // Ueber die eingebaute Web Speech API (Chrome, Edge, Safari; Firefox nicht).
+  // Ein Diktat ist eine Sitzung: jede Pause und jedes Satzende wird ein eigener
+  // Gedanke, bis man wieder aufs Mikrofon tippt oder die Flaeche schliesst.
+  var dictation = null;      // { rec, interim, count, stopping, error, startedAt }
+  var dictationNote = "";    // was nach dem Diktat stehen bleibt
+  var SPEECH_ERRORS = {
+    "not-allowed": "Kein Zugriff auf das Mikrofon – bitte im Browser erlauben.",
+    "service-not-allowed": "Kein Zugriff auf das Mikrofon – bitte im Browser erlauben.",
+    "audio-capture": "Kein Mikrofon gefunden.",
+    "network": "Die Spracherkennung braucht eine Internetverbindung.",
+    "language-not-supported": "Deutsch wird hier nicht erkannt."
+  };
+  function speechCtor() { return window.SpeechRecognition || window.webkitSpeechRecognition || null; }
+  function splitSpoken(t) {
+    return (t || "").replace(/([.!?])\s+/g, "$1\n").split("\n").map(function (x) {
+      return x.trim().replace(/\.$/, "").trim();   // ein Punkt am Ende gehoert zum Sprechen, nicht zum Gedanken
+    }).filter(Boolean);
+  }
+  function renderDictation() {
+    var mic = document.getElementById("inboxMic"), live = document.getElementById("inboxLive");
+    var on = !!(dictation && !dictation.stopping);
+    if (mic) {
+      mic.hidden = !speechCtor();
+      mic.classList.toggle("is-on", on);
+      mic.setAttribute("aria-pressed", String(on));
+      mic.setAttribute("aria-label", on ? "Diktat beenden" : "Diktieren");
+    }
+    if (!live) return;
+    var h = "";
+    if (on) h = '<span class="ihb-live-dot"></span>Hört zu – jede Pause beendet einen Gedanken' +
+      (dictation.interim ? ' · <i data-role="dictation-interim">' + escapeHtml(dictation.interim) + "</i>" : "");
+    else if (dictationNote) h = escapeHtml(dictationNote);
+    live.innerHTML = h;
+    live.hidden = !h;
+  }
+  function startDictation() {
+    var Ctor = speechCtor();
+    if (!Ctor || (dictation && !dictation.stopping)) return;
+    var rec;
+    try { rec = new Ctor(); } catch (e) { dictationNote = "Die Spracheingabe ist hier nicht verfügbar."; renderDictation(); return; }
+    var s = { rec: rec, interim: "", count: 0, stopping: false, error: "", startedAt: Date.now() };
+    dictation = s;
+    dictationNote = "";
+    var lang = document.documentElement.getAttribute("lang") || "de";
+    rec.lang = lang === "de" ? "de-DE" : lang;
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.onresult = function (e) {
+      var interim = "";
+      for (var i = e.resultIndex || 0; i < e.results.length; i++) {
+        var r = e.results[i], t = r && r[0] ? r[0].transcript : "";
+        // auch was nach dem Stoppen noch fertig erkannt wird, kommt in den Eingang
+        if (r && r.isFinal) splitSpoken(t).forEach(function (x) { if (addToInbox(x)) s.count++; });
+        else interim += t;
+      }
+      s.interim = s.stopping ? "" : interim.trim();
+      renderDictation();
+    };
+    rec.onerror = function (e) {
+      var code = e && e.error;
+      if (code === "no-speech" || code === "aborted") return;   // Stille: einfach weiterhoeren
+      s.error = SPEECH_ERRORS[code] || "Die Spracheingabe wurde abgebrochen.";
+      s.stopping = true;
+      renderDictation();
+    };
+    rec.onend = function () {
+      // Chrome beendet auch ein fortlaufendes Diktat nach einer Weile Stille.
+      // Solange niemand gestoppt hat, geht es weiter (nicht im Kreis, wenn es sofort endet).
+      if (!s.stopping && dictation === s && Date.now() - s.startedAt > 1000) {
+        try { s.startedAt = Date.now(); rec.start(); return; } catch (err) { /* dann eben Schluss */ }
+      }
+      if (dictation === s) dictation = null;
+      dictationNote = s.error || (s.count ? (s.count === 1 ? "1 Gedanke diktiert." : s.count + " Gedanken diktiert.") : "");
+      renderDictation();
+    };
+    try { rec.start(); } catch (e) {
+      dictation = null;
+      dictationNote = "Die Spracheingabe ließ sich nicht starten.";
+    }
+    renderDictation();
+  }
+  function stopDictation() {
+    var s = dictation;
+    if (!s || s.stopping) return;
+    s.stopping = true;
+    s.interim = "";
+    try { s.rec.stop(); } catch (e) { /* schon beendet */ }
+    renderDictation();
+  }
+  function toggleDictation() {
+    if (dictation && !dictation.stopping) stopDictation(); else startDictation();
+  }
+  document.addEventListener("visibilitychange", function () { if (document.hidden) stopDictation(); });
+
+  // ---------- Startansicht am Handy ----------
+  function isPhone() {
+    try { return !!(window.matchMedia && window.matchMedia("(max-width: 599px)").matches); } catch (e) { return false; }
+  }
+  function setPhoneStart(v) {
+    if (v !== "eingang" && v !== "karte") return;
+    state.phoneStart = v;
+    storeSet(START_KEY, v);
+    renderSettingsModal();
+  }
+  function applyPhoneStart() {
+    if (state.phoneStart !== "eingang" || !isPhone() || inboxOpen()) return;
+    openInbox({ noFocus: true });
+  }
+  // Escape schliesst den Eingang auch, wenn der Fokus nicht darin steht (etwa
+  // nach dem Start am Handy mit Tastatur) - und vor allem anderen auf der Karte.
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape" || !inboxOpen()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    closeInbox();
+  }, true);
+
+  // ---------- Sinken: der Gedanke taucht in seine Kernidee ein ----------
+  // Ein Schild mit dem Text fliegt zur Kernidee, schrumpft dabei und verblasst;
+  // die Kernidee nimmt es mit einem kurzen Schimmer auf, erst dann laeuft der
+  // Funkenstrom zum Hub. Das Ziel wird in jedem Bild neu gemessen: nach dem
+  // Einsortieren gleitet die Karte oft noch (neue Kernidee, Platzwechsel).
+  var SINK_MS = 550;   // bei "Zuegig"; Mittel und Ruhig strecken es wie alle Bewegung
+  function corePoint(coreId) {
+    var el = bubblesLayer.querySelector('[data-role="core"][data-core-id="' + coreId + '"]');
+    if (!el) return null;
+    var r = el.getBoundingClientRect();
+    if (!r.width) return null;
+    return { el: el, x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+  function sinkIntoCore(coreId, text, from) {
+    if (!from || !motionEnabled() || state.view !== "map" || !corePoint(coreId)) { energyFromCore(coreId); return; }
+    var pill = document.createElement("div");
+    pill.className = "ihb-sink";
+    pill.setAttribute("aria-hidden", "true");
+    pill.setAttribute("data-core-id", coreId);
+    pill.textContent = shortText(text || "", 48);
+    document.body.appendChild(pill);
+    var dur = Math.round(SINK_MS * speedFactor()), t0 = null, last = corePoint(coreId);
+    function place(x, y, s, o) {
+      pill.style.transform = "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px) translate(-50%,-50%) scale(" + s.toFixed(3) + ")";
+      pill.style.opacity = o.toFixed(3);
+    }
+    place(from.x, from.y, 1, 1);
+    function frame(ts) {
+      if (t0 === null) t0 = ts;
+      var k = Math.min(1, (ts - t0) / dur);
+      var to = corePoint(coreId) || last;   // kurz neu gezeichnet: am letzten Ort weiter
+      last = to;
+      var e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;   // sanft an, sanft ab
+      place(from.x + (to.x - from.x) * e, from.y + (to.y - from.y) * e,
+        1 - 0.75 * k * k,                                // schrumpft, je naeher, desto schneller
+        k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3);              // verblasst erst zum Schluss
+      if (k < 1) { requestAnimationFrame(frame); return; }
+      if (pill.parentNode) pill.parentNode.removeChild(pill);
+      var hit = corePoint(coreId);
+      if (hit) {
+        hit.el.classList.remove("ihb-absorb");
+        void hit.el.offsetWidth;
+        hit.el.classList.add("ihb-absorb");
+        setTimeout(function () { hit.el.classList.remove("ihb-absorb"); }, Math.round(600 * speedFactor()));
+      }
+      energyFromCore(coreId);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- Kompost (Assist §21.1) ----------
+  // Kernideen, die lange niemand geaendert hat und die mit keiner anderen einen
+  // Tag teilen, werden zur Durchsicht vorgeschlagen statt still geloescht.
+  // Kompostiertes verlaesst die Karte, bleibt aber erhalten und zurueckholbar.
+  var COMPOST_DIR = "Kompost";
+  var COMPOST_DAY_CHOICES = [30, 60, 90];
+  var DAY_MS = 86400000;
+  function validIso(v) { return typeof v === "string" && !isNaN(Date.parse(v)) ? v : undefined; }
+
+  // Aenderungsdatum: verglichen wird der Inhalt, nicht wer ihn wie geaendert
+  // hat - so reicht eine Stelle fuer alle Wege (Karte, Baum, Editor, Ziehen).
+  var coreSigs = null;   // id -> Inhalt beim letzten Stempeln
+  function coreSignature(c) {
+    return JSON.stringify([c.text || "", c.subtitle || "", c.notes || "", c.tags || [], c.color || "auto", c.icon || "none",
+      (c.details || []).map(function (d) { return [d.text || "", d.status || "", d.notes || "", d.tags || [], d.color || "auto"]; })]);
+  }
+  // accept: einen von aussen geladenen Stand als Basis nehmen, ohne zu stempeln
+  function stampCoreChanges(accept) {
+    var now = new Date().toISOString(), sigs = {};
+    state.cores.forEach(function (c) {
+      var sig = coreSignature(c);
+      sigs[c.id] = sig;
+      if (!validIso(c.updated)) c.updated = now;   // neu, oder aus der Zeit vor v3.8
+      else if (!accept && coreSigs && coreSigs[c.id] !== undefined && coreSigs[c.id] !== sig) c.updated = now;
+    });
+    coreSigs = sigs;
+  }
+  stampCoreChanges(true);
+
+  function unionById(first, second) {
+    var seen = {}, out = [];
+    first.concat(second).forEach(function (c) { if (!seen[c.id]) { seen[c.id] = true; out.push(c); } });
+    return out;
+  }
+  // was (wieder) auf der Karte steht, liegt nicht zugleich im Kompost
+  function dropCompostOnMap() {
+    var onMap = {};
+    state.cores.forEach(function (c) { onMap[c.id] = true; });
+    state.compost = state.compost.filter(function (c) { return !onMap[c.id]; });
+  }
+  function persistCompost() {
+    scheduleFolderSync();
+    if (!state.loaded || storageKind() === "none") return;
+    storeSet(COMPOST_KEY, JSON.stringify(state.compost));
+  }
+
+  // ---- Kandidaten und Signal ----
+  function sharesTag(core) {
+    var t = core.tags || [];
+    if (!t.length) return false;
+    return state.cores.some(function (o) {
+      return o.id !== core.id && (o.tags || []).some(function (x) { return t.indexOf(x) !== -1; });
+    });
+  }
+  function daysSince(iso) { return Math.floor((Date.now() - Date.parse(iso)) / DAY_MS); }
+  function isCompostCandidate(c) {
+    return !!validIso(c.updated) && daysSince(c.updated) >= state.compostDays && !sharesTag(c);
+  }
+  function compostCandidates() {
+    return state.cores.filter(isCompostCandidate).sort(function (a, b) { return Date.parse(a.updated) - Date.parse(b.updated); });
+  }
+  function compostNoteHtml(cls) {
+    var n = compostCandidates().length;
+    if (!n || compostSession) return "";
+    return '<p class="' + cls + ' ihb-compost-note" data-role="compost-note">' +
+      (n === 1 ? "1 Kernidee ruht" : n + " Kernideen ruhen") + " seit über " + state.compostDays + " Tagen " +
+      '<button type="button" class="ihb-chip" data-role="compost-review">Durchsehen</button></p>';
+  }
+  function setCompostDays(d) {
+    if (COMPOST_DAY_CHOICES.indexOf(d) === -1) return;
+    state.compostDays = d;
+    storeSet(COMPOST_DAYS_KEY, String(d));
+    renderCaptionOrQuickCreate();
+    if (state.view === "tree") renderTree();
+    renderSettingsModal();
+  }
+
+  // ---- Durchsicht ----
+  var compostSession = null;   // { queue: [ids], done, total }
+  function startCompost(ids) {
+    var queue = (ids || compostCandidates().map(function (c) { return c.id; })).filter(function (id) { return !!coreById(id); });
+    if (!queue.length) return;
+    if (sortSession) endSort();
+    closeInbox();
+    state.tagEditing = null;
+    detailEditing = null;
+    compostSession = { queue: queue, done: 0, total: queue.length };
+    renderCaptionOrQuickCreate();   // das Signal tritt zurueck, solange die Durchsicht laeuft
+    renderCompostDialog();
+  }
+  function currentCompostCore() {
+    if (!compostSession) return null;
+    while (compostSession.queue.length && !coreById(compostSession.queue[0])) compostSession.queue.shift();
+    return compostSession.queue.length ? coreById(compostSession.queue[0]) : null;
+  }
+  function fmtDate(iso) { var d = new Date(iso); return pad2(d.getDate()) + "." + pad2(d.getMonth() + 1) + "." + d.getFullYear(); }
+  function compostFacts(c) {
+    var n = c.details.length;
+    var done = c.details.filter(function (d) { return detailStatus(d) === "erledigt"; }).length;
+    return (n ? n + (n === 1 ? " Detail" : " Details") + (done ? ", " + done + " erledigt" : "") : "Ohne Details");
+  }
+  function renderCompostDialog() {
+    var c = currentCompostCore();
+    if (!c) { endCompost(); return; }
+    var days = daysSince(c.updated);
+    var html =
+      '<div class="ihb-display-head"><span>Kompost · ' + (compostSession.done + 1) + " von " + compostSession.total + "</span>" +
+      '<button type="button" data-role="compost-close" aria-label="Durchsicht beenden">&#10005;</button></div>' +
+      '<div class="ihb-sort ihb-compost" data-role="compost-dialog" tabindex="-1">' +
+      '<p class="ihb-compost-title">' + escapeHtml(c.text || "Unbenannt") + "</p>" +
+      (c.subtitle ? '<p class="ihb-note">' + escapeHtml(c.subtitle) + "</p>" : "") +
+      '<p class="ihb-note" data-role="compost-facts">' + escapeHtml(compostFacts(c)) + " · unverändert seit " + days +
+      (days === 1 ? " Tag" : " Tagen") + " (" + fmtDate(c.updated) + ")</p>" +
+      '<div class="ihb-chiprow ihb-sort-actions">' +
+      '<button type="button" class="ihb-chip" data-role="compost-keep"><kbd>B</kbd>Behalten</button>' +
+      '<button type="button" class="ihb-chip" data-role="compost-inbox"><kbd>E</kbd>Zurück in den Eingang</button>' +
+      '<button type="button" class="ihb-chip" data-role="compost-put"><kbd>K</kbd>Kompostieren</button>' +
+      '<button type="button" class="ihb-chip" data-role="compost-later"><kbd>S</kbd>Später</button>' +
+      "</div>" +
+      '<p class="ihb-note ihb-compost-hint">' + ((c.tags || []).length ? "Teilt keinen Tag mit einer anderen Kernidee. " : "Ohne Tags, mit nichts verbunden. ") +
+      "Eingang: Titel und offene Details werden Gedanken, der Rest entfällt. " +
+      "Kompost: alles bleibt erhalten und lässt sich zurückholen.</p></div>";
+    openHubDisplay(html);
+    var host = editorHost();
+    var box = host && host.querySelector('[data-role="compost-dialog"]');
+    // ohne Mitscrollen fokussieren: auf kleinen Schirmen beginnt die Flaeche oben beim Titel
+    if (box) { try { box.focus({ preventScroll: true }); } catch (e) { box.focus(); } }
+    if (host) host.scrollTop = 0;
+  }
+  function advanceCompost() {
+    if (!compostSession) return;
+    compostSession.queue.shift();
+    compostSession.done++;
+    renderCompostDialog();
+  }
+  function endCompost() {
+    if (!compostSession) return;
+    compostSession = null;
+    renderCaptionOrQuickCreate();
+    if (state.view === "tree") { renderTree(); return; }
+    closeHubDisplay();
+    updateHubCount();
+  }
+  function takeOffMap(id) {
+    state.cores = state.cores.filter(function (x) { return x.id !== id; });
+    if (state.focusedId === id) { state.focusedId = null; state.selectedDetail = null; }
+  }
+  // Behalten zaehlt als Anfassen: die Frist beginnt neu
+  function keepCore(id) {
+    var c = coreById(id);
+    if (!c) return;
+    c.updated = new Date().toISOString();
+    onCoresChanged();
+  }
+  function tagSuffix(tags) {
+    return (tags || []).map(function (t) { return " #" + String(t).replace(/\s+/g, "-"); }).join("");
+  }
+  // Zurueck in den Eingang: der Titel wird ein Gedanke, jedes offene Detail ein
+  // Gedanke "Titel: Detail" - so findet das Einsortieren den Zusammenhang wieder.
+  function compostToInbox(id) {
+    var c = coreById(id);
+    if (!c) return;
+    var now = new Date().toISOString();
+    var base = validIso(c.created) || validIso(c.updated) || now;
+    var items = [{ id: nextId(), text: (c.text || "Unbenannt") + tagSuffix(c.tags), created: base }];
+    c.details.forEach(function (d) {
+      if (detailStatus(d) === "erledigt" || !(d.text || "").trim()) return;
+      items.push({ id: nextId(), text: (c.text ? c.text + ": " : "") + d.text + tagSuffix(d.tags), created: validIso(d.created) || base });
+    });
+    state.inbox = state.inbox.concat(items);
+    takeOffMap(id);
+    persistInbox();
+    updateInboxBadge();
+    onCoresChanged();
+  }
+  function compostCore(id) {
+    var c = coreById(id);
+    if (!c) return;
+    state.compost = state.compost.concat([Object.assign({}, c, { composted: new Date().toISOString() })]);
+    takeOffMap(id);
+    onCoresChanged();
+    persistCompost();
+  }
+  function restoreCompost(id) {
+    if (state.cores.length >= MAX_CORES) return false;
+    var c = null;
+    state.compost.forEach(function (x) { if (x.id === id) c = x; });
+    if (!c) return false;
+    var fresh = Object.assign({}, c, { updated: new Date().toISOString() });   // Zurueckholen ist Anfassen
+    delete fresh.composted;
+    if (coreById(fresh.id)) fresh.id = nextId();
+    state.compost = state.compost.filter(function (x) { return x.id !== id; });
+    state.cores = state.cores.concat([fresh]);
+    onCoresChanged();
+    persistCompost();
+    if (state.view === "map") energyFromCore(fresh.id);
+    renderSettingsModal();
+    return true;
+  }
+  function deleteCompost(id) {
+    var c = null;
+    state.compost.forEach(function (x) { if (x.id === id) c = x; });
+    if (!c || !window.confirm("„" + (c.text || "Unbenannt") + "“ endgültig löschen? Das lässt sich nicht rückgängig machen.")) return;
+    state.compost = state.compost.filter(function (x) { return x.id !== id; });
+    persistCompost();
+    renderSettingsModal();
+  }
+  function compostAction(kind) {
+    var c = currentCompostCore();
+    if (!c) return;
+    if (kind === "keep") keepCore(c.id);
+    else if (kind === "inbox") compostToInbox(c.id);
+    else if (kind === "put") compostCore(c.id);
+    advanceCompost();
+  }
+  // Tasten im Dialog: in der Einfangphase, damit sie vor den uebrigen Kuerzeln greifen
+  document.addEventListener("keydown", function (e) {
+    if (!compostSession || e.ctrlKey || e.metaKey || e.altKey) return;
+    var t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT")) return;
+    var k = e.key;
+    if (k === "Escape") endCompost();
+    else if (k === "b" || k === "B") compostAction("keep");
+    else if (k === "e" || k === "E") compostAction("inbox");
+    else if (k === "k" || k === "K") compostAction("put");
+    else if (k === "s" || k === "S") compostAction("later");
+    else return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, true);
+
+  // ---- Suche ----
+  function compostMatches() {
+    var q = state.query.trim().toLowerCase();
+    if (!q) return [];
+    return state.compost.filter(function (c) {
+      var hay = [c.text, c.subtitle, c.notes, (c.tags || []).join(" ")].concat((c.details || []).map(function (d) { return d.text; }));
+      return hay.join("\n").toLowerCase().indexOf(q) !== -1;
+    });
+  }
+  function compostHitNote() {
+    var n = compostMatches().length;
+    return n ? " · " + n + " im Kompost" : "";
+  }
+
+  // ---- Einstellungen ----
+  function compostSectionHtml() {
+    var q = state.query.trim().toLowerCase(), full = state.cores.length >= MAX_CORES;
+    var n = compostCandidates().length;
+    var html = '<div class="ihb-section" id="compostSection" data-role="compost-section"><h3>Kompost</h3>' +
+      '<p class="ihb-note">Kernideen, die so lange unverändert sind und keinen Tag mit einer anderen teilen, schlägt IdeaHub zur Durchsicht vor. Gelöscht wird nichts von selbst.</p>' +
+      '<div class="ihb-themerow">' + COMPOST_DAY_CHOICES.map(function (d) {
+        return '<button type="button" class="ihb-themeopt' + (state.compostDays === d ? " active" : "") + '" data-role="compostdays" data-days="' + d + '">' + d + " Tage</button>";
+      }).join("") + "</div>";
+    if (n) html += '<p class="ihb-note" style="margin-top:10px;">' + (n === 1 ? "1 Kernidee ruht" : n + " Kernideen ruhen") +
+      ' gerade so lange. <button type="button" class="ihb-chip" data-role="compost-review">Durchsehen</button></p>';
+    if (!state.compost.length) return html + '<p class="ihb-note" data-role="compost-empty" style="margin-top:10px;">Der Kompost ist leer.</p></div>';
+    html += '<div class="ihb-compost-list">';
+    state.compost.slice().sort(function (a, b) { return Date.parse(b.composted) - Date.parse(a.composted); }).forEach(function (c) {
+      var hay = [c.text, c.subtitle, c.notes, (c.tags || []).join(" ")].concat((c.details || []).map(function (d) { return d.text; })).join("\n").toLowerCase();
+      var hit = q && hay.indexOf(q) !== -1;
+      html += '<div class="ihb-compost-row' + (hit ? " is-match" : "") + '" data-role="compost-item" data-id="' + c.id + '">' +
+        '<span class="ihb-compost-name">' + escapeHtml(c.text || "Unbenannt") + "</span>" +
+        '<span class="ihb-compost-meta">' + escapeHtml(compostFacts(c)) + " · kompostiert " + fmtDate(c.composted) + "</span>" +
+        '<button type="button" class="ihb-chip" data-role="compost-restore" data-id="' + c.id + '"' + (full ? " disabled" : "") + ">Zurückholen</button>" +
+        '<button type="button" class="ihb-inbox-drop" data-role="compost-delete" data-id="' + c.id + '" aria-label="Endgültig löschen" title="Endgültig löschen">' + icon("x", 12) + "</button></div>";
+    });
+    html += "</div>";
+    if (full) html += '<p class="ihb-note" style="margin-top:6px;">Die Karte ist mit ' + MAX_CORES + " Kernideen voll – erst Platz schaffen, dann zurückholen.</p>";
+    return html + "</div>";
+  }
+  function openCompost() {
+    openSettings();
+    var sec = document.getElementById("compostSection");
+    if (sec && sec.scrollIntoView) sec.scrollIntoView({ block: "start" });
+  }
+
+  // ---- Ordner: Kompost/ ----
+  var compostFiles = new Map();    // id -> Dateiname in Kompost/
+  var compostDirKnown = false;     // der Ordner hat (oder hatte) einen Kompost
+  function readCompostDir(dir) {
+    var cores = [], map = new Map(), iter = dir.entries();
+    function step() {
+      return iter.next().then(function (res) {
+        if (res.done) return;
+        var name = res.value[0], entry = res.value[1];
+        if (entry.kind !== "file" || name.toLowerCase().slice(-3) !== ".md") return step();
+        return entry.getFile().then(function (f) { return f.text(); }).then(function (text) {
+          var c = parseMdToCore(text, name);
+          if (!c.composted) c.composted = new Date().toISOString();
+          cores.push(c);
+          map.set(c.id, name);
+        }).then(step);
+      });
+    }
+    return step().then(function () { return { cores: cores, map: map }; });
+  }
+  function syncCompostDir(handle) {
+    if ((!state.compost.length && !compostDirKnown) || !handle.getDirectoryHandle) return;
+    return handle.getDirectoryHandle(COMPOST_DIR, { create: true }).then(function (dir) {
+      compostDirKnown = true;
+      var ids = {};
+      state.compost.forEach(function (c) { ids[c.id] = true; });
+      var chain = Promise.resolve();
+      compostFiles.forEach(function (fname, id) {
+        if (ids[id]) return;
+        chain = chain.then(function () {
+          return dir.removeEntry(fname).catch(function () {}).then(function () { compostFiles.delete(id); });
+        });
+      });
+      state.compost.forEach(function (core) {
+        chain = chain.then(function () {
+          var fname = coreFilename(core), prev = compostFiles.get(core.id);
+          var pre = prev && prev !== fname ? dir.removeEntry(prev).catch(function () {}) : Promise.resolve();
+          return pre.then(function () { return dir.getFileHandle(fname, { create: true }); })
+            .then(function (fh) { return fh.createWritable(); })
+            .then(function (w) { return w.write(coreToMd(core)).then(function () { return w.close(); }); })
+            .then(function () { compostFiles.set(core.id, fname); });
+        });
+      });
+      return chain;
+    });
+  }
+
+  // ---- Klicks: Signal, Dialog, Einstellungen, Suche ----
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest && e.target.closest("[data-role]");
+    if (!t || t.disabled) return;
+    var role = t.getAttribute("data-role"), id = t.getAttribute("data-id");
+    if (role === "compost-review") { closeSettings(); startCompost(); }
+    else if (role === "open-compost") openCompost();
+    else if (role === "compostdays") setCompostDays(Number(t.getAttribute("data-days")));
+    else if (role === "compost-restore") restoreCompost(id);
+    else if (role === "compost-delete") deleteCompost(id);
+    else if (role === "compost-close") endCompost();
+    else if (role === "compost-keep") compostAction("keep");
+    else if (role === "compost-inbox") compostAction("inbox");
+    else if (role === "compost-put") compostAction("put");
+    else if (role === "compost-later") compostAction("later");
+  });
+
+  // ---------- Aufruf per Link ----------
+  // index.html?neu=Text legt den Text in den Eingang (iOS-Kurzbefehl, Lesezeichen,
+  // Raycast). Danach wird die Adresse bereinigt, damit Neuladen nichts verdoppelt.
+  function captureFromLink() {
+    var text = null;
+    try { text = new URLSearchParams(window.location.search).get("neu"); } catch (e) { return false; }
+    if (!text || !text.trim()) return false;
+    addToInbox(text);
+    try {
+      var params = new URLSearchParams(window.location.search);
+      params.delete("neu");
+      var qs = params.toString();
+      window.history.replaceState(null, "", window.location.pathname + (qs ? "?" + qs : "") + window.location.hash);
+    } catch (e) { /* manche Hosts erlauben das nicht */ }
+    openInbox();   // zeigen, dass es angekommen ist
+    return true;
+  }
 
   // ---------- init ----------
   function showStartupError(err) {
@@ -6712,20 +8127,40 @@ WBTor({
     // Persistence is optional: if the host blocks storage, the app still works.
     try {
       loadPersisted().then(function () {
-        try { renderStructure(); } catch (e) { /* keep the already-rendered map */ }
+        try {
+          setView(state.view, true);   // die gespeicherte Ansicht auch anwenden
+          renderStructure();
+          renderTree();
+          updateInboxBadge();
+          // nur speichern; den Ordner fasst erst eine echte Aenderung an
+          if (state.inbox.length && storageKind() !== "none") storeSet(INBOX_KEY, JSON.stringify(state.inbox));
+          if (!captureFromLink()) applyPhoneStart();
+        } catch (e) { /* keep the already-rendered map */ }
       }, function () {});
     } catch (e) { /* ignore */ }
   }
 
-  function torStart() { WBTor.start(init); }
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", torStart);
+    document.addEventListener("DOMContentLoaded", init);
   } else {
-    torStart();
+    init();
   }
 
   window.__ihb = {
-    state: state, coreToMd: coreToMd, parseMdToCore: parseMdToCore, slugify: slugify, coreFilename: coreFilename,
+    state: state, storageKind: storageKind, storageWarning: storageWarning,
+    loadPersisted: loadPersisted, flushPersist: flushPersist, coreToMd: coreToMd,
+    parseCapture: parseCapture, captureAction: captureAction, similarCores: similarCores, suggestCores: suggestCores,
+    enterEdit: enterEdit, afterRingSettles: afterRingSettles,
+    planOutline: planOutline, startTreeEdit: startTreeEdit, treeEditState: function () { return treeEdit; },
+    addToInbox: addToInbox, openInbox: openInbox, closeInbox: closeInbox, startSort: startSort,
+    sortState: function () { return sortSession; }, INBOX_SIGNAL: INBOX_SIGNAL,
+    renderInboxDots: renderInboxDots, inboxToMd: inboxToMd, parseInboxMd: parseInboxMd, isInboxMd: isInboxMd,
+    syncToFolder: syncToFolder, inboxMatches: inboxMatches, inboxMdStand: inboxMdStand,
+    bundleInbox: bundleInbox, inboxPicks: function () { return inboxPicks.slice(); }, splitSpoken: splitSpoken,
+    startDictation: startDictation, stopDictation: stopDictation, dictationState: function () { return dictation; },
+    setPhoneStart: setPhoneStart, isPhone: isPhone, sinkIntoCore: sinkIntoCore, SINK_MS: SINK_MS,
+    compostCandidates: compostCandidates, startCompost: startCompost, compostState: function () { return compostSession; },
+    restoreCompost: restoreCompost, setCompostDays: setCompostDays, stampCoreChanges: stampCoreChanges, openCompost: openCompost, parseMdToCore: parseMdToCore, slugify: slugify, coreFilename: coreFilename,
     coreStatus: coreStatus, coreProgress: coreProgress, cycleDetailStatus: cycleDetailStatus,
     allTags: allTags, toggleTagFilter: toggleTagFilter, clearTagFilter: clearTagFilter, computeCounts: computeCounts,
     highlightMatch: highlightMatch, setTheme: setTheme, glassFill: glassFill,
