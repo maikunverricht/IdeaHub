@@ -1427,6 +1427,19 @@
   body[data-theme] .ihb-inbox-handle { flex: none; cursor: grab; color: var(--text-3); touch-action: none; user-select: none; font-size: 14px; line-height: 1; padding: 2px; }
   body[data-theme] .ihb-inbox-row.is-match .ihb-inbox-text { color: var(--amber); }
   body[data-theme] .ihb-inboxsheet.is-dragging { opacity: .12; pointer-events: none; transition: opacity .2s; }
+  /* ---- Rad mit Lupe (v4.3) ---- */
+  .ihb-lens { position: absolute; left: var(--x); top: var(--y); transform: translate(-50%, -50%); border-radius: 50%;
+    border: 1.5px dashed var(--amber, #F2B33D); opacity: .5; pointer-events: none; transition: opacity .3s; }
+  .ihb-lens.is-off { opacity: 0; }
+  #map.ihb-wheel .ihb-core { -webkit-touch-callout: none; }
+  /* am Handy fangen unsichtbare Stift- und Loeschknoepfe sonst den Tipp auf einen kleinen Planeten ab */
+  @media (hover: none) {
+    #map.ihb-wheel .ihb-core:not(.is-focused):not(:focus-within) .ihb-editbtn,
+    #map.ihb-wheel .ihb-core:not(.is-focused):not(:focus-within) .ihb-del,
+    #map.ihb-wheel .ihb-core:not(.is-focused):not(:focus-within) .ihb-tagbtn { visibility: hidden; }
+  }
+  #map.ihb-turning, #map.ihb-turning .ihb-core { cursor: grabbing; }
+  body[data-theme] .ihb-core.ihb-lifted { box-shadow: 0 0 0 3px var(--amber-soft), var(--shadow-lg); z-index: 30; }
   /* ---- Dialoge am Handy als Blatt (v4.2) ---- */
   .ihb-dialogcard .ihb-sheet-body { min-height: 0; }
   .ihb-dialogcard .ihb-display-head { margin-top: 2px; }
@@ -1624,7 +1637,7 @@
 
   <div id="captionArea"></div>
 
-  <div class="ihb-version">IdeaHub v4.2</div>
+  <div class="ihb-version">IdeaHub v4.3</div>
 
   <input id="importInput" type="file" accept=".md,text/markdown" multiple style="display:none" />
   <input id="importJsonInput" type="file" accept=".json,application/json" style="display:none" />
@@ -1987,6 +2000,20 @@
     // point the geometry wins; only a bare visibility floor remains.
     core = Math.max(10 * s, core);
 
+    // Rad mit Lupe: werden die Ideen zu klein zum Lesen, liegen sie als Planeten
+    // auf einem Ring, und die oben in der Lupe ist gross
+    wheelLaidOut = false;
+    wheelCache = null;
+    var wheelGeo = wheelWanted(core, vcores, ringCount) ? wheelSetup(w, s, vcores) : null;
+    wheelSpec = wheelGeo;
+    if (wheelGeo) {
+      wheelLaidOut = true;
+      ringRadii = [wheelGeo.R];
+      layout.ringRadii = ringRadii;
+      r1 = wheelGeo.R;
+      core = wheelGeo.p;
+    }
+
     var totalDetails = 0;
     vcores.forEach(function (c) {
       // unfocused details are drawn as small dots and cost proportionally less room
@@ -2024,6 +2051,10 @@
         2 * (r1 - hub / 2 - 10 * s), 2 * (w / 2 - r1 - BASE.edge * s));
       core = Math.max(BASE.coreMin * 0.8 * s, core * BASE.focusShrink);
       if (coreFocus < core) coreFocus = core;
+    }
+    if (wheelGeo) {   // im Rad bleiben die Planeten Planeten, die Lupe ist das Fokusmass
+      core = wheelGeo.p;
+      coreFocus = Math.max(core, wheelGeo.lensD);
     }
     if (state.scope) {
       var dsc = depthScaleMax();
@@ -2104,12 +2135,12 @@
   // Diameter of one particular core bubble, honouring the focus zoom.
   function coreDiameter(core) {
     var t = focusProgressFor(core);
-    var base = layout.core * roomFactor(core.id);
+    var base = (wheelLaidOut ? wheelCoreBase(core) : layout.core) * roomFactor(core.id);
     return base + (layout.coreFocus - base) * t;
   }
   // Endmass nach der laufenden Drehung (Fokus schon gesetzt oder schon aufgehoben)
   function finalCoreDiameter(core) {
-    return state.focusedId === core.id ? layout.coreFocus : layout.core * roomFactor(core.id);
+    return state.focusedId === core.id ? layout.coreFocus : (wheelLaidOut ? wheelCoreBase(core) : layout.core) * roomFactor(core.id);
   }
   // Wie weit eine Idee fuer das offene Hub zuruecktritt (1 = gar nicht)
   function roomFactor(id) {
@@ -2143,11 +2174,28 @@
     // Only while nothing is focused. Once you are working on an idea the map
     // should hold still — and the swept discs would otherwise crowd the focused
     // idea's full-size details out of their space.
-    return state.rotate && state.focusedId === null && !state.scope &&
+    // im Rad kreisen keine Punkte: nur die gewaehlte Idee traegt dort Details
+    return state.rotate && state.focusedId === null && !state.scope && !wheelLaidOut &&
       detailModeFor(core) === "mini" && core.details.length > 0;
   }
 
   function detailSizeFor(core) {
+    var sz = detailSizeBase(core);
+    // Im Rad steht die gewaehlte Idee anfangs ganz aussen, die Lupe reicht bis an
+    // den Rand der Karte. Ihre Details haetten dort nur Platz auf ihr selbst; sie
+    // wachsen deshalb erst aus ihr heraus, waehrend sie nach innen gleitet, und
+    // ziehen sich beim Loesen wieder unter sie zurueck.
+    if (wheelLaidOut) {
+      var room = wheelDetailRoom(core);
+      if (sz.w > room) { var k = Math.max(0, room) / sz.w; sz = { w: sz.w * k, h: sz.h * k }; }
+    }
+    return sz;
+  }
+  function wheelDetailRoom(core) {
+    var L = layout, own = coreDiameter(core);
+    return L.width / 2 - coreOrbit(core) - BASE.edge * L.s - own / 2 - 3 * L.s;
+  }
+  function detailSizeBase(core) {
     if (detailModeFor(core) !== "full") return { w: layout.miniW, h: layout.miniH };
     // The details of a focused idea grow from dot to full size along with the
     // idea's move inward. Jumping straight to full size while it still sat on
@@ -2173,6 +2221,8 @@
 
   // The "add detail" ghost only makes sense while the core is focused.
   function detailSlotsFor(core) {
+    // im Rad tragen nur die fokussierte Idee Details; Planeten bleiben Punkte
+    if (wheelLaidOut && state.focusedId !== core.id && focusCoreId() !== core.id) return 0;
     // On a map so crowded that the cores themselves are down to a dot, the
     // silent detail dots stop carrying information and only take away the room
     // the cores still need. They are dropped rather than squeezed.
@@ -2238,6 +2288,7 @@
       var focusedHere = state.focusedId === core.id;
       var r2 = detailRadiusPx(slots, coreDiameter(core), dsize, coreOrbit(core), focusedHere);
       var dr = Math.max(dsize.w, dsize.h) / 2;
+      if (wheelLaidOut && dr < 2) return;   // noch unter der Idee verborgen
       // full-size details of the focused idea are the only ones driven by
       // layout.focusW, so the fitter has to be able to tell them apart
       var role = detailModeFor(core) === "full" ? "focus" : "detail";
@@ -2256,8 +2307,9 @@
       }
     });
     if (cores.length < MAX_CORES) {
-      var ga = clusterAngles().ghost + ringRotation();
-      out.push({ x: cx + L.r1 * Math.cos(ga), y: cy + L.r1 * Math.sin(ga), r: L.core * roomFactor(GHOST_ID) / 2, id: GHOST_ID });
+      var ga = ghostAngleRaw() + ringRotation();
+      var gor = ghostOrbit();   // bei zwei Ringen liegt der Platzhalter oft innen
+      out.push({ x: cx + gor * Math.cos(ga), y: cy + gor * Math.sin(ga), r: ghostDiameter() / 2, id: GHOST_ID });
     }
     // Group bubbles are measured like everything else. Leaving them out is how a
     // decorative circle silently starts overlapping the ring on a full map.
@@ -2324,7 +2376,11 @@
         var b = list[j];
         if ((a.owner && a.owner === b.id) || (b.owner && b.owner === a.id)) continue;
         var d = distance(a.x, a.y, b.x, b.y) - (a.r + b.r);
-        if (d < worst) { worst = d; blocker = (b.id || b.owner) ? "core" : "detail"; }
+        if (d < worst) {
+          worst = d;
+          // im Rad hilft Verkleinern der Planeten nicht, wenn die fokussierte Idee selbst im Weg ist
+          blocker = (b.id || b.owner) ? (wheelLaidOut && b.id === focusCoreId() ? "detail" : "core") : "detail";
+        }
       }
     }
     return blocker === "core";
@@ -2397,7 +2453,8 @@
         // While anything actually overlaps, the cores stay the general-purpose
         // lever they always were. Only once the layout is merely tight does the
         // guard apply, so they are not shrunk for a gain that never materialises.
-        if (focusCoreId() !== null && L.core > f.core && (worst < 0 || focusBlockedByCore(pos))) {
+        // im Rad sind die Planeten schon klein; erst gibt der Kranz nach, dann sie
+        if (focusCoreId() !== null && L.core > f.core && (wheelLaidOut ? worst < 0 && L.focusW <= f.detail : (worst < 0 || focusBlockedByCore(pos)))) {
           L.core *= 0.95;
           shrunk = true;
         }
@@ -2581,7 +2638,19 @@
   function pctOfMap(px) { return (px / layout.width) * 100; }
   // Hard ceiling for adding through the UI. Beyond 12 the bubbles shrink faster
   // than the added ideas are worth, and a focused idea's details get very small.
-  var MAX_CORES = 12;
+  var MAX_CORES = 24;   // seit v4.3: mit dem Rad bleiben auch viele Ideen lesbar
+  // ---- Rad mit Lupe (v4.3) ----
+  var WHEEL_KEY = "rad";
+  var WHEEL_FROM = 60;          // darunter sind Titel kaum noch lesbar
+  var WHEEL_MIN_AUTO = 10;      // von selbst erst ab 10 Plaetzen: fuer viele Ideen, nicht fuer eine enge Gruppe
+  var WHEEL_SIGMA = 0.8;        // wie weit die Lupe ihre Nachbarn mitwachsen laesst
+  var LENS_MAX = 160;           // groesste Idee in der Lupe
+  var LENS_RATIO = 2.2;         // mindestens so viel groesser als ein Planet
+  var LENS_ANGLE = -Math.PI / 2;   // oben: dort parkt am Rechner auch eine fokussierte Idee
+  var wheelLaidOut = false;     // die zuletzt gemessene Karte ist ein Rad
+  var wheelSpec = null;         // { R, lensD, p, lam, n, gap }
+  var wheelCache = null;
+  var wheel = { pos: 0, target: null, raf: null, acc: 0, accTimer: null, gesture: null, lensId: null, longPress: false };
   // Above this the map still works, but it is worth telling the user it is filling up.
   var COMFORT_CORES = 8;
   var MAX_DETAILS = 5;
@@ -2761,7 +2830,7 @@
   // ring there are 11px on a desktop and 4px on a phone, which is nothing.
   // Returns [] when there is no room at all rather than forcing a size in.
   function groupBubbles() {
-    if (!layout || !layout.ringRadii) return [];
+    if (!layout || !layout.ringRadii || wheelLaidOut) return [];   // im Rad keine Sammelpunkte
     // A group is an overview affordance: while an idea is focused or a filter is
     // narrowing the map, it would only be one more thing in the way.
     if (state.focusedId !== null) return [];
@@ -2918,6 +2987,7 @@
 
   // Which ring is this idea on, in base units?
   function ringIndexFor(core) {
+    if (wheelLaidOut) return 0;   // das Rad hat nur einen Ring
     var tbl = clusterAngles();
     if (core && tbl.radii.hasOwnProperty(core.id)) return tbl.radii[core.id];
     return tbl.ghostRadius === undefined ? 0 : tbl.ghostRadius;
@@ -2929,6 +2999,10 @@
   }
 
   function coreAngleRaw(index, total) {
+    if (wheelLaidOut) {
+      var wg = wheelGeom();
+      if (wg && wg.angles.length) return wg.angles[Math.min(index, wg.angles.length - 1)];
+    }
     var core = visibleCores()[index];
     var table = clusterAngles();
     if (core && table.angles.hasOwnProperty(core.id)) return table.angles[core.id];
@@ -2958,6 +3032,10 @@
   }
 
   function updatePositionsOnly() {
+    updatePositionsCore();
+    wheelFrame();
+  }
+  function updatePositionsCore() {
     var cores = visibleCores();
     var coreSlots = cores.length + (cores.length < MAX_CORES ? 1 : 0);
     cores.forEach(function (core, i) {
@@ -3021,6 +3099,16 @@
           dEl.style.setProperty("--y", dp.y + "%");
         }
       });
+      // der Platzhalter fuer ein neues Detail zieht mit; sonst wartete er schon
+      // am Ziel, waehrend seine Idee noch unterwegs war, und lag auf ihr
+      if (slots > core.details.length && !orbitEl) {
+        var gEl = bubblesLayer.querySelector('[data-role="ghost-detail"][data-core-id="' + core.id + '"]');
+        if (gEl) {
+          var gp2 = polar(pos.x, pos.y, r2, detailAngle(angle, core.details.length, slots, focusedHere));
+          gEl.style.setProperty("--x", gp2.x + "%");
+          gEl.style.setProperty("--y", gp2.y + "%");
+        }
+      }
     });
   }
 
@@ -3591,6 +3679,7 @@
     compost: [],          // kompostierte Kernideen (mit composted), nicht auf der Karte
     compostDays: 60,      // so lange unveraendert, dann zur Durchsicht vorschlagen
     phoneStart: "eingang",   // Ebene 1 zuerst: am Handy wird festgehalten, geordnet am Rechner
+    wheel: "auto",          // Rad mit Lupe: "auto" sobald die Ideen zu klein werden, "immer", "aus"
   };
   var writtenFiles = new Map();
 
@@ -3752,6 +3841,15 @@
   }
 
   function toggleFocus(id) {
+    // im Rad: erst in die Lupe drehen, dann fokussieren
+    if (wheelLaidOut && state.view !== "tree" && state.focusedId !== id) {
+      var wfi = wheelIndexOf(id);
+      if (wfi !== -1 && wfi !== lensIndex()) {
+        if (state.focusedId !== null) clearFocus();
+        turnWheelToIndex(wfi, function () { toggleFocus(id); });
+        return;
+      }
+    }
     // Switching from one focused idea straight to another: close the display
     // around the old one first, then reopen it around the new one.
     if (state.focusedId !== null && id !== state.focusedId && hubOpen) {
@@ -4088,7 +4186,7 @@
     if (q || (c.searching && c.matched === 0)) {
       captionArea.innerHTML = storageWarnHtml("ihb-caption") + capturePanelHtml(q, c.searching && c.matched === 0);
     } else {
-      var overflowNote = state.cores.length > COMFORT_CORES
+      var overflowNote = wheelLaidOut ? wheelNoteHtml() : state.cores.length > COMFORT_CORES
         ? '<p class="ihb-caption ihb-caption-warn">' + state.cores.length + ' Kernideen auf der Karte' +
           (state.cores.length > MAX_CORES ? ' — mehr als die ' + MAX_CORES + ', die sich hier anlegen lassen' : '') +
           '. Alles wird angezeigt, die Bubbles werden dabei aber kleiner.</p>'
@@ -4146,7 +4244,6 @@
     var prevRects = captureRects();
     measureLayout();
     var L = layout;
-    var R1 = pctOfMap(L.r1);
     function coreStyleFor(d) {
       return "width:" + d + "px;height:" + d + "px;margin-left:" + (-d / 2) + "px;margin-top:" + (-d / 2) + "px;";
     }
@@ -4156,7 +4253,7 @@
       state.activeTags.length === 0 && cores.length < MAX_CORES;
     var coreSlots = cores.length + (showGhostCore ? 1 : 0);
     var linesHtml = "";
-    var bubblesHtml = "";
+    var bubblesHtml = wheelLaidOut ? lensHtml() : "";   // die Lupe liegt unter den Kugeln
 
     cores.forEach(function (core, i) {
       var angle = coreAngle(i, coreSlots);
@@ -4271,10 +4368,10 @@
     });
 
     if (showGhostCore) {
-      var gAngle = clusterAngles().ghost + ringRotation();
-      var gPos = polar(HUB.x, HUB.y, R1, gAngle);
+      var gAngle = ghostAngleRaw() + ringRotation();
+      var gPos = polar(HUB.x, HUB.y, pctOfMap(ghostOrbit()), gAngle);
       bubblesHtml += '<div class="ihb-bubble ihb-core ihb-ghost" role="button" tabindex="0" data-role="ghost-core" ' +
-        'style="' + coreStyleFor(L.core * roomFactor(GHOST_ID)) + '--x:' + gPos.x + '%;--y:' + gPos.y + '%;" aria-label="Neue Kernidee hinzufügen">' + icon("plus", 18) + '</div>';
+        'style="' + coreStyleFor(ghostDiameter()) + '--x:' + gPos.x + '%;--y:' + gPos.y + '%;" aria-label="Neue Kernidee hinzufügen">' + icon("plus", 18) + '</div>';
     }
 
     groupBubbles().forEach(function (g) {
@@ -4303,6 +4400,7 @@
     linesLayer.innerHTML = (state.scope ? "" : ringGuideSvg() + crossLinkSvg(corePos)) + linesHtml;
     bubblesLayer.innerHTML = bubblesHtml;
     bubblesLayer.classList.toggle("ihb-3d", !!state.scope);
+    if (mapEl) mapEl.classList.toggle("ihb-wheel", wheelLaidOut);
     bubblesLayer.style.perspective = state.scope ? perspectivePx().toFixed(0) + "px" : "";
     bubblesLayer.style.perspectiveOrigin = state.scope ? "50% 50%" : "";
     if (ringAnim.raf && bubblesLayer) bubblesLayer.classList.add("ihb-tweening");
@@ -4366,6 +4464,7 @@
       el.style.fontSize = Math.max(7.5, Math.min(12, L.detailW * 0.155)) + "px";
     });
     fitHeadlines();
+    wheelFrame();
   }
 
   // Last-resort fit: if a headline still does not fit its bubble, step the type
@@ -4531,7 +4630,7 @@
   }
 
   function crossLinkSvg(corePos) {
-    if (!state.showLinks) return "";
+    if (!state.showLinks || wheelLaidOut) return "";   // zwischen Planeten nur Unruhe
     var links = crossLinks();
     if (!links.length) return "";
     var clearPct = (layout.hub / 2 / layout.width) * 100 + 7;
@@ -4719,6 +4818,9 @@
       return storeGet(START_KEY);
     }).then(function (stRes) {
       if (stRes && (stRes.value === "eingang" || stRes.value === "karte")) state.phoneStart = stRes.value;
+      return storeGet(WHEEL_KEY);
+    }).then(function (whRes) {
+      if (whRes && (whRes.value === "auto" || whRes.value === "immer" || whRes.value === "aus")) state.wheel = whRes.value;
       return storeGet(COMPOST_DAYS_KEY);
     }).then(function (kdRes) {
       if (kdRes && COMPOST_DAY_CHOICES.indexOf(Number(kdRes.value)) !== -1) state.compostDays = Number(kdRes.value);
@@ -6107,6 +6209,12 @@
       '<button type="button" class="ihb-themeopt' + (state.cluster ? " active" : "") + '" data-role="cluster" data-on="1">Wolken an</button>' +
       '<button type="button" class="ihb-themeopt' + (!state.cluster ? " active" : "") + '" data-role="cluster" data-on="0">aus</button>' +
       '</div>' +
+      '<p class="ihb-note" style="margin-top:12px;">Rad: Werden die Kernideen zu klein zum Lesen, liegen sie als Planeten auf einem Ring. Oben in der Lupe steht eine groß, Drehen holt die nächste. „Immer“ zeigt das Rad auch bei wenigen Ideen.</p>' +
+      '<div class="ihb-themerow">' +
+      '<button type="button" class="ihb-themeopt' + (state.wheel === "auto" ? " active" : "") + '" data-role="wheel" data-wheel="auto">Rad automatisch</button>' +
+      '<button type="button" class="ihb-themeopt' + (state.wheel === "immer" ? " active" : "") + '" data-role="wheel" data-wheel="immer">immer</button>' +
+      '<button type="button" class="ihb-themeopt' + (state.wheel === "aus" ? " active" : "") + '" data-role="wheel" data-wheel="aus">aus</button>' +
+      '</div>' +
       '<p class="ihb-note" style="margin-top:12px;">Bewegung: Funkenstrom zum Hub, gleitende Bubbles, kreisende Punkte.' +
       (state.motion === null && systemPrefersReducedMotion()
         ? ' <b>Dein System fordert reduzierte Bewegung an — deshalb ist alles davon gerade aus.</b>'
@@ -6156,6 +6264,7 @@
     // structure here never steals its focus; this keeps ghost visibility,
     // filtering, the hub count and the quick-create panel all in sync.
     renderCurrentView();
+    wheelFollowSearch();   // im Rad: zum naechsten Treffer drehen
   });
   searchInput.addEventListener("keydown", function (e) {
     if (state.pasteDraft) {
@@ -6310,6 +6419,7 @@
   }
 
   function onMapWheel(e) {
+    if (wheelScroll(e)) return;   // im Rad dreht das Mausrad; Strg/Kneifen zoomt weiter
     // Inside the open display the wheel belongs to its own scrollbar; grabbing
     // it there would zoom the map instead of scrolling the content.
     if (e.target && e.target.closest && e.target.closest("#hubDisplay")) return;
@@ -6905,6 +7015,17 @@
 
   // Which slot on the ring does this point fall into?
   function slotAt(x, y, slots) {
+    if (wheelLaidOut) {   // im Rad sind die Plaetze ungleich breit: der naechste Planet zaehlt
+      var wg = wheelGeom();
+      if (wg) {
+        var pa = Math.atan2(y - layout.width / 2, x - layout.width / 2), best = 0, bestD = Infinity;
+        wg.angles.forEach(function (a, i) {
+          var dd = Math.abs(Math.atan2(Math.sin(pa - a - ringRotation()), Math.cos(pa - a - ringRotation())));
+          if (dd < bestD) { bestD = dd; best = i; }
+        });
+        return best;
+      }
+    }
     var ang = Math.atan2(y - layout.width / 2, x - layout.width / 2) + Math.PI / 2;
     while (ang < 0) ang += Math.PI * 2;
     while (ang >= Math.PI * 2) ang -= Math.PI * 2;
@@ -6966,6 +7087,8 @@
     var el = t.closest('[data-role="core"]') || t.closest('[data-role="detail"]');
     if (!el) return;
     if (el.getAttribute("data-mode") === "mini") return; // silent dots are not drag handles
+    // im Rad dreht Ziehen; umsortiert wird erst nach langem Druecken
+    if (wheelLaidOut && el.getAttribute("data-role") === "core" && !wheel.longPress) return;
     var p = pointerXY(e);
     drag = {
       el: el,
@@ -7054,7 +7177,20 @@
       return;
     }
     var coreBubble = target.closest('[data-role="core"]');
-    if (coreBubble) { toggleFocus(coreBubble.getAttribute("data-core-id")); return; }
+    if (coreBubble) {
+      var cid = coreBubble.getAttribute("data-core-id");
+      // im Rad holt Antippen einen Planeten erst in die Lupe
+      if (wheelLaidOut && state.view !== "tree" && !ringAnim.raf) {
+        var wi = wheelIndexOf(cid);
+        if (wi !== -1 && wi !== lensIndex()) {
+          if (state.focusedId !== null) clearFocus();
+          turnWheelToIndex(wi);
+          return;
+        }
+      }
+      toggleFocus(cid);
+      return;
+    }
     var detailBubble = target.closest('[data-role="detail"]');
     if (detailBubble) {
       // A silent dot is tiny and may be moving; editing it would be a poor target.
@@ -7071,6 +7207,7 @@
   bubblesLayer.addEventListener("click", function (e) {
     if (e.target.tagName === "INPUT") return;
     if (justDragged) { justDragged = false; return; }
+    if (Date.now() < wheelClickBlock) return;   // der Klick nach dem Drehen
     handleBubbleActivate(e.target);
   });
   bubblesLayer.addEventListener("keydown", function (e) {
@@ -7180,6 +7317,7 @@
     else if (role === "theme") themeWithFade(t.getAttribute("data-theme"));
     else if (role === "links") setShowLinks(t.getAttribute("data-on") === "1");
     else if (role === "orbit") setRotate(t.getAttribute("data-on") === "1");
+    else if (role === "wheel") setWheel(t.getAttribute("data-wheel"));
     else if (role === "cluster") setCluster(t.getAttribute("data-on") === "1");
     else if (role === "motion") setMotion(t.getAttribute("data-on") === "1");
     else if (role === "speed") setSpeed(t.getAttribute("data-speed"));
@@ -8882,6 +9020,440 @@
   document.addEventListener("focusin", keyboardInset);
   document.addEventListener("focusout", function () { setTimeout(keyboardInset, 0); });
 
+  // ---------- Rad mit Lupe (v4.3) ----------
+  // Planeten auf einem Ring; die Idee oben in der Lupe ist gross, ihre Nachbarn
+  // wachsen gestaffelt mit. Jeder Platz bekommt so viel Bogen, wie er braucht;
+  // die Groesse folgt der Sehne seines Bogens, damit sich nie zwei beruehren.
+  function wheelSlotCount() {
+    var n = visibleCores().length;
+    return n + (n < MAX_CORES ? 1 : 0);
+  }
+  // automatisch, wenn die Ideen zu klein zum Lesen wuerden oder zwei Ringe noetig
+  // waeren: dort bliebe im Fokus fuer die gewaehlte Idee kaum Platz
+  function wheelWanted(core, vcores, ringCount) {
+    if (state.wheel === "aus" || state.scope) return false;
+    var n = vcores.length + (vcores.length < MAX_CORES ? 1 : 0);
+    if (n < 6) return false;
+    if (state.wheel === "immer") return true;
+    if (n < WHEEL_MIN_AUTO) return false;
+    return core < WHEEL_FROM || ringCount > 1;
+  }
+  function wheelSetup(w, s, vcores) {
+    var n = vcores.length + (vcores.length < MAX_CORES ? 1 : 0);
+    var edge = BASE.edge * s, hubR = BASE.hub * s / 2, g = 10 * s;
+    var lensD = Math.min(LENS_MAX, w / 2 - edge - hubR - g);
+    if (lensD < 24) return null;
+    var R = w / 2 - edge - lensD / 2 - 1;
+    var gap = Math.max(2, 6 * s);
+    var two = 2 * WHEEL_SIGMA * WHEEL_SIGMA, S = 0;
+    for (var i = 0; i < n; i++) { var k = i > n / 2 ? i - n : i; S += Math.exp(-(k * k) / two); }
+    var C = 2 * Math.PI * R - n * gap;
+    var den = C - lensD * S;
+    var lam = den > 0 ? lensD * (n - S) / den : 1;
+    if (!(lam >= LENS_RATIO)) lam = LENS_RATIO;   // die Lupe soll sich immer deutlich abheben
+    // eine fokussierte Idee steht immer in der Lupe; sonst bleibt die Idee in der
+    // Lupe in der Lupe, auch wenn sich die Liste aendert
+    if (state.focusedId !== null && !wheel.raf && !wheel.gesture) {
+      for (var fj = 0; fj < vcores.length; fj++) if (vcores[fj].id === state.focusedId) { wheel.pos = fj; wheel.lensId = state.focusedId; break; }
+    } else if (wheel.lensId && !wheel.raf && !wheel.gesture) {
+      for (var j = 0; j < vcores.length; j++) if (vcores[j].id === wheel.lensId) { wheel.pos = j; break; }
+    }
+    if (wheel.pos >= n || wheel.pos < 0) wheel.pos = ((Math.round(wheel.pos) % n) + n) % n;
+    return { R: R, lensD: lensD, p: lensD / lam, lam: lam, n: n, gap: gap };
+  }
+  function wheelGeom() {
+    var W = wheelSpec;
+    if (!W) return null;
+    // im Fokus ist die fokussierte Idee die Mitte der Lupe, wie immer der Fokus kam
+    var center = wheel.pos, fc = focusCoreId(), ids = {};
+    visibleCores().forEach(function (c, ci) { ids[c.id] = ci; });
+    // im Fokus sind die anderen nur Umgebung: die Lupe wird schmal, die Nachbarn
+    // werden wieder Planeten und geben dem Kranz der Details Platz
+    var ft = 0;
+    if (fc !== null && ids.hasOwnProperty(fc)) { center = ids[fc]; ft = Math.max(0, Math.min(1, focusProgressFor(coreById(fc)))); }
+    var sigma = WHEEL_SIGMA + (0.35 - WHEEL_SIGMA) * ft;
+    var key = center.toFixed(5) + "|" + ft.toFixed(4) + "|" + W.n + "|" + W.R + "|" + W.p;
+    if (wheelCache && wheelCache.key === key) return wheelCache;
+    var n = W.n, arcs = [], weights = [], T = 0, i;
+    var two = 2 * sigma * sigma;
+    for (i = 0; i < n; i++) {
+      var k = i - center;
+      k = ((k % n) + n) % n;
+      if (k > n / 2) k -= n;
+      var wgt = 1 + (W.lam - 1) * Math.exp(-(k * k) / two);
+      weights.push(wgt);
+      arcs.push(wgt * W.p + W.gap);
+      T += wgt * W.p + W.gap;
+    }
+    var mids = [], acc = 0;
+    for (i = 0; i < n; i++) { mids.push((acc + arcs[i] / 2) / T * Math.PI * 2); acc += arcs[i]; }
+    // die Lupe zeigt auf die (gebrochene) Position zwischen zwei Plaetzen
+    var fl = Math.floor(center), f = center - fl;
+    var j0 = ((fl % n) + n) % n, j1 = (j0 + 1) % n;
+    var a0 = mids[j0], a1 = mids[j1];
+    if (a1 < a0) a1 += Math.PI * 2;
+    var off = LENS_ANGLE - (a0 + (a1 - a0) * f);
+    var angles = [], diams = [];
+    for (i = 0; i < n; i++) {
+      var alpha = Math.min(Math.PI, arcs[i] / T * Math.PI * 2);
+      angles.push(mids[i] + off);
+      diams.push(Math.max(2, Math.min(weights[i] * W.p, 2 * W.R * Math.sin(alpha / 2) - W.gap)));
+    }
+    wheelCache = { key: key, angles: angles, diams: diams, weights: weights, ids: ids };
+    return wheelCache;
+  }
+  // der Fitter darf die Planeten noch kleiner machen (layout.core), das gilt dann fuer alle
+  function wheelScale() { return wheelSpec && wheelSpec.p ? layout.core / wheelSpec.p : 1; }
+  function wheelIndexOf(id) {
+    var g = wheelGeom();
+    return g && g.ids.hasOwnProperty(id) ? g.ids[id] : -1;
+  }
+  function wheelCoreBase(core) {
+    var g = wheelGeom(), i = g ? g.ids[core.id] : undefined;
+    return i === undefined ? layout.core : g.diams[i] * wheelScale();
+  }
+  function ghostAngleRaw() {
+    if (wheelLaidOut) {
+      var g = wheelGeom();
+      if (g && g.angles.length) return g.angles[g.angles.length - 1];
+    }
+    return clusterAngles().ghost;
+  }
+  // Auf welchem Ring der Platzhalter liegt, in px. Bei zwei Ringen steht er
+  // als Letzter meist innen; frueher wurde er trotzdem auf den aeusseren
+  // gezeichnet und gemessen. Bei hoechstens 12 Ideen fiel das nie auf.
+  function ghostOrbit() {
+    var rr = layout.ringRadii || [];
+    var i = ringIndexFor(null);
+    return rr[i] !== undefined ? rr[i] : layout.r1;
+  }
+  function ghostDiameter() {
+    var base = layout.core;
+    if (wheelLaidOut) {
+      var g = wheelGeom();
+      if (g && g.diams.length) base = g.diams[g.diams.length - 1] * wheelScale();
+    }
+    return base * roomFactor(GHOST_ID);
+  }
+  function lensIndex() {
+    var n = wheelSlotCount() || 1;
+    return ((Math.round(wheel.pos) % n) + n) % n;
+  }
+  function lensCore() {
+    var vc = visibleCores(), i = lensIndex();
+    return i < vc.length ? vc[i] : null;
+  }
+  function lensHtml() {
+    var W = wheelSpec;
+    if (!W) return "";
+    var pos = polar(HUB.x, HUB.y, pctOfMap(W.R), LENS_ANGLE + ringRotation()), d = W.lensD + 16;
+    return '<div class="ihb-lens' + (focusCoreId() !== null ? " is-off" : "") + '" aria-hidden="true" style="--x:' + pos.x + "%;--y:" + pos.y +
+      "%;width:" + d + "px;height:" + d + 'px;"></div>';
+  }
+  function wheelNoteHtml() {
+    var over = state.cores.length > MAX_CORES ? " – mehr als die " + MAX_CORES + ", die sich hier anlegen lassen" : "";
+    var touch = false;
+    try { touch = !!(window.matchMedia && window.matchMedia("(hover: none)").matches); } catch (e) { /* Maus */ }
+    return '<p class="ihb-caption' + (over ? " ihb-caption-warn" : "") + '">' + visibleCores().length + " Kernideen im Rad" + over + ": " +
+      (touch ? "<b>am Ring ziehen</b> dreht es" : "<b>ziehen</b>, <b>Mausrad</b> oder <b>← →</b> drehen es") + ", " +
+      "<b>Antippen</b> holt eine Idee in die Lupe, dort öffnet ein zweites Antippen sie im Hub · <b>lange drücken</b> und ziehen sortiert um · " +
+      (touch ? "<b>Kneifen</b> zoomt.</p>" : "<b>Strg + Mausrad</b> oder Kneifen zoomt.</p>");
+  }
+  function setWheel(v) {
+    if (v !== "auto" && v !== "immer" && v !== "aus") return;
+    state.wheel = v;
+    storeSet(WHEEL_KEY, v);
+    renderStructure();
+    renderCaptionOrQuickCreate();
+    renderSettingsModal();
+  }
+
+  // Bild fuer Bild: Platzhalter und Lupe mitnehmen, Schrift und Speichen nach Groesse
+  var wordWidth = {};   // Titel -> Breite des laengsten Worts bei 10 px
+  function wheelFrame() {
+    if (!wheelLaidOut || !bubblesLayer || state.view === "tree") return;
+    var gh = bubblesLayer.querySelector('[data-role="ghost-core"]');
+    if (gh) {
+      var gp = polar(HUB.x, HUB.y, pctOfMap(ghostOrbit()), ghostAngleRaw() + ringRotation()), gd = ghostDiameter();
+      gh.style.setProperty("--x", gp.x + "%");
+      gh.style.setProperty("--y", gp.y + "%");
+      gh.style.width = gh.style.height = gd + "px";
+      gh.style.marginLeft = gh.style.marginTop = (-gd / 2) + "px";
+    }
+    var lens = bubblesLayer.querySelector(".ihb-lens");
+    if (lens && wheelSpec) {
+      var lp = polar(HUB.x, HUB.y, pctOfMap(wheelSpec.R), LENS_ANGLE + ringRotation());
+      lens.style.setProperty("--x", lp.x + "%");
+      lens.style.setProperty("--y", lp.y + "%");
+      lens.classList.toggle("is-off", focusCoreId() !== null);
+    }
+    // die Details der gewaehlten Idee wachsen mit, gezeichnet sind sie in voller Groesse
+    var fcore = focusCoreId() !== null ? coreById(focusCoreId()) : null;
+    if (fcore) {
+      var cur = detailSizeFor(fcore);
+      eachEl(bubblesLayer.querySelectorAll('[data-core-id="' + fcore.id + '"][data-role="detail"], [data-core-id="' + fcore.id + '"][data-role="ghost-detail"]'), function (el) {
+        var drawn = parseFloat(el.style.width) || cur.w || 1;
+        var k = cur.w / drawn;
+        el.style.transform = Math.abs(k - 1) < 0.002 ? "" : "scale(" + k.toFixed(4) + ")";
+        el.style.visibility = cur.w < 4 ? "hidden" : "";
+      });
+    }
+    var minD = wheelSpec ? wheelSpec.p * wheelScale() * 1.6 : 0, maxD = wheelSpec ? wheelSpec.lensD : 1;
+    eachEl(bubblesLayer.querySelectorAll('[data-role="core"]'), function (el) {
+      var d = parseFloat(el.style.width) || 0;
+      var lab = el.querySelector(".ihb-label"), sub = el.querySelector(".ihb-sublabel");
+      if (lab) {
+        lab.classList.remove("ihb-label-off", "ihb-label-out", "ihb-label-in");
+        lab.removeAttribute("data-fit");   // die Schrift fuehrt hier das Rad
+        var key = lab.textContent;
+        if (wordWidth[key] === undefined) wordWidth[key] = widestWord(lab, 10) || 0;
+        var padX = parseFloat(el.style.paddingLeft);
+        if (isNaN(padX)) padX = 8;
+        var font = Math.max(7, Math.min(22, d * 0.135));
+        if (wordWidth[key] > 0) font = Math.min(font, Math.max(0, d - 2 * padX - 3) * 0.95 / wordWidth[key] * 10);
+        var show = d >= 40 && font >= 6.5;
+        lab.style.visibility = show ? "" : "hidden";
+        if (show) lab.style.fontSize = font.toFixed(2) + "px";
+      }
+      if (sub) {
+        sub.classList.remove("ihb-label-off", "ihb-label-out", "ihb-label-in");
+        var showSub = d >= 96;
+        sub.style.visibility = showSub ? "" : "hidden";
+        if (showSub) sub.style.fontSize = Math.max(7.5, Math.min(14, d * 0.093)).toFixed(2) + "px";
+      }
+      // Speiche und Fortschritt nur zu den grossen hin
+      var id = el.getAttribute("data-core-id");
+      var f = Math.max(0, Math.min(1, (d - minD) / Math.max(1, maxD - minD)));
+      ["line[data-line-core=\"" + id + "\"][data-line-kind=\"core\"]", "line[data-line-progress=\"" + id + "\"]"].forEach(function (sel) {
+        var ln = linesLayer.querySelector(sel);
+        if (!ln) return;
+        var base = parseFloat(ln.getAttribute("opacity"));
+        ln.style.opacity = String((isNaN(base) ? 0.45 : base) * f);
+      });
+    });
+  }
+
+  // ---- Drehen ----
+  function wheelBusy() { return !wheelLaidOut || state.view === "tree" || state.focusedId !== null || !!ringAnim.raf; }
+  function setWheelPos(p) {
+    wheel.pos = p;
+    wheelCache = null;
+    updatePositionsOnly();
+  }
+  function wheelMotionClass(on) {
+    if (!bubblesLayer) return;
+    if (on) bubblesLayer.classList.add("ihb-tweening");   // eigene Uebergaenge der Kugeln aus
+    else if (!ringAnim.raf) bubblesLayer.classList.remove("ihb-tweening");
+  }
+  function settleWheel() {
+    var n = wheelSlotCount() || 1;
+    var r = Math.round(wheel.pos);
+    wheel.pos = ((r % n) + n) % n;
+    wheel.target = null;
+    wheelCache = null;
+    var lc = lensCore();
+    wheel.lensId = lc ? lc.id : null;
+    updatePositionsOnly();
+    wheelMotionClass(false);
+    if (roomLaidOut) renderStructure();   // das offene Hub misst neu, wer jetzt im Weg ist
+  }
+  function turnWheelTo(target, done) {
+    if (wheel.raf) cancelAnimationFrame(wheel.raf);
+    wheel.raf = null;
+    wheel.target = target;
+    if (!motionEnabled() || typeof requestAnimationFrame !== "function") {
+      setWheelPos(target);
+      settleWheel();
+      if (done) done();
+      return;
+    }
+    wheelMotionClass(true);
+    var from = wheel.pos, t0 = Date.now();
+    var dur = Math.round(Math.min(900, 240 + 110 * Math.abs(target - from)) * speedFactor() / 1.5);
+    (function step() {
+      var p = Math.min(1, (Date.now() - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      setWheelPos(from + (target - from) * e);
+      if (p < 1) { wheel.raf = requestAnimationFrame(step); return; }
+      wheel.raf = null;
+      settleWheel();
+      if (done) done();
+    })();
+  }
+  // die Position fuer Platz index, die von hier aus am naechsten liegt
+  function nearestPos(index) {
+    var n = wheelSlotCount() || 1, base = wheel.target !== null ? wheel.target : wheel.pos;
+    var d = index - (((base % n) + n) % n);
+    while (d > n / 2) d -= n;
+    while (d < -n / 2) d += n;
+    return base + d;
+  }
+  function turnWheelToIndex(index, done) { turnWheelTo(Math.round(nearestPos(index)), done); }
+  function turnWheelBy(steps) {
+    var base = wheel.target !== null ? wheel.target : Math.round(wheel.pos);
+    turnWheelTo(base + steps);
+  }
+
+  // Ziehen am Ring (Maus und Finger); langes Druecken auf einen Planeten sortiert um
+  var wheelClickBlock = 0;
+  function ringPointAngle(x, y) {
+    var r = mapEl.getBoundingClientRect();
+    var m = toMapSpace(x - r.left, y - r.top), c = layout.width / 2;
+    return { a: Math.atan2(m.y - c, m.x - c), d: Math.sqrt((m.x - c) * (m.x - c) + (m.y - c) * (m.y - c)) };
+  }
+  function wheelGestureStart(e) {
+    if (wheelBusy() || hubOpen || camera.zoom > 1.001 || !mapEl) return;
+    if (e.touches && e.touches.length !== 1) { wheel.gesture = null; return; }
+    if (e.button !== undefined && e.button !== 0) return;
+    var t = e.target;
+    if (!t || !t.closest || t.closest("#hub, .ihb-inboxdots, button, input, [data-role=\"ghost-core\"], [data-role=\"detail\"]")) return;
+    var onCore = t.closest('[data-role="core"]');
+    var p = pointerXY(e), q = ringPointAngle(p.x, p.y);
+    if (!onCore && (q.d < layout.hub / 2 || q.d > layout.width / 2)) return;   // nur im Band des Rings
+    if (wheel.raf) { cancelAnimationFrame(wheel.raf); wheel.raf = null; wheel.target = null; }
+    var g = wheel.gesture = { a: q.a, x0: p.x, y0: p.y, moved: false, onCore: onCore, lifted: false,
+      trail: [{ t: Date.now(), pos: wheel.pos }], timer: null };
+    if (onCore) {
+      g.timer = setTimeout(function () {
+        if (wheel.gesture !== g || g.moved) return;
+        g.lifted = true;
+        onCore.classList.add("ihb-lifted");
+        wheel.longPress = true;
+        try { onDragStart({ target: onCore, clientX: g.x0, clientY: g.y0 }); } finally { wheel.longPress = false; }
+      }, 480);
+    }
+    if (!e.touches && e.cancelable) e.preventDefault();   // kein Markieren beim Drehen mit der Maus
+  }
+  function wheelGestureMove(e) {
+    var g = wheel.gesture;
+    if (!g || g.lifted) return;
+    var p = pointerXY(e);
+    if (!g.moved) {
+      if (Math.sqrt((p.x - g.x0) * (p.x - g.x0) + (p.y - g.y0) * (p.y - g.y0)) < DRAG_THRESHOLD) return;
+      g.moved = true;
+      clearTimeout(g.timer);
+      wheelMotionClass(true);
+      if (mapEl) mapEl.classList.add("ihb-turning");
+    }
+    if (e.cancelable) e.preventDefault();
+    var q = ringPointAngle(p.x, p.y);
+    var da = q.a - g.a;
+    while (da > Math.PI) da -= Math.PI * 2;
+    while (da < -Math.PI) da += Math.PI * 2;
+    g.a = q.a;
+    setWheelPos(wheel.pos - da / (Math.PI * 2 / (wheelSlotCount() || 1)));
+    g.trail.push({ t: Date.now(), pos: wheel.pos });
+    if (g.trail.length > 6) g.trail.shift();
+  }
+  function wheelGestureEnd() {
+    var g = wheel.gesture;
+    wheel.gesture = null;
+    if (!g) return;
+    clearTimeout(g.timer);
+    if (g.lifted) { g.onCore.classList.remove("ihb-lifted"); return; }   // onDragEnd sortiert um
+    if (!g.moved) return;   // ein Tipp: der Klick kommt gleich
+    if (mapEl) mapEl.classList.remove("ihb-turning");
+    wheelClickBlock = Date.now() + 350;
+    var a = g.trail[0], b = g.trail[g.trail.length - 1];
+    // Plaetze je ms; wer vor dem Loslassen still hielt, gibt keinen Schwung mehr
+    var v = b.t > a.t && Date.now() - b.t < 120 ? (b.pos - a.pos) / (b.t - a.t) : 0;
+    turnWheelTo(Math.round(wheel.pos + Math.max(-3, Math.min(3, v * 220))));   // Schwung, dann einrasten
+  }
+  if (mapEl) {
+    mapEl.addEventListener("mousedown", wheelGestureStart);
+    mapEl.addEventListener("touchstart", wheelGestureStart, { passive: true });
+  }
+  document.addEventListener("mousemove", wheelGestureMove);
+  document.addEventListener("touchmove", wheelGestureMove, { passive: false });
+  document.addEventListener("mouseup", wheelGestureEnd);
+  document.addEventListener("touchend", wheelGestureEnd);
+  document.addEventListener("touchcancel", wheelGestureEnd);
+
+  // Mausrad: eine Raste, eine Idee weiter
+  function wheelScroll(e) {
+    if (wheelBusy() || e.ctrlKey || camera.zoom > 1.001) return false;
+    if (e.target && e.target.closest && e.target.closest("#hubDisplay")) return false;
+    if (e.cancelable) e.preventDefault();
+    var d = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    var steps = 0;
+    if (e.deltaMode !== 0 || Math.abs(d) >= 50) {
+      // eine Raste am Mausrad ist eine Idee weiter, je nach Browser 53 bis 120 px
+      // oder eine Zeile; ein sehr schneller Dreh darf mehrere Schritte machen
+      if (e.deltaMode === 0) d = d / 120; else if (e.deltaMode === 2) d = d * 3;
+      else d = d / 3;
+      steps = (d > 0 ? 1 : -1) * Math.max(1, Math.round(Math.abs(d)));
+      wheel.acc = 0;
+    } else {
+      // Trackpad: viele kleine Schuebe sammeln sich
+      wheel.acc += d;
+      while (wheel.acc >= 100) { steps++; wheel.acc -= 100; }
+      while (wheel.acc <= -100) { steps--; wheel.acc += 100; }
+    }
+    clearTimeout(wheel.accTimer);
+    wheel.accTimer = setTimeout(function () { wheel.acc = 0; }, 250);
+    if (steps) turnWheelBy(steps);
+    return true;
+  }
+
+  // Suche: Treffer sind die Ideen, die der Filter hell laesst
+  function wheelMatches() {
+    if (!(state.query.trim() || state.activeTags.length)) return [];
+    var ev = evaluateFilters(), out = [];
+    visibleCores().forEach(function (c, i) {
+      var info = ev.perCore.get(c.id);
+      if (info && info.coreActive) out.push(i);
+    });
+    return out;
+  }
+  function jumpMatch(dir) {
+    var m = wheelMatches();
+    if (!m.length) return;
+    var n = wheelSlotCount() || 1, cur = wheel.target !== null ? ((Math.round(wheel.target) % n) + n) % n : lensIndex();
+    var best = null, bestD = Infinity;
+    m.forEach(function (i) {
+      var d = (((i - cur) * dir) % n + n) % n;
+      if (d > 0 && d < bestD) { bestD = d; best = i; }
+    });
+    if (best === null) best = m[0];
+    turnWheelToIndex(best);
+  }
+  function wheelFollowSearch() {
+    if (wheelBusy()) return;
+    var m = wheelMatches();
+    if (!m.length || m.indexOf(lensIndex()) !== -1) return;   // steht schon ein Treffer in der Lupe
+    var n = wheelSlotCount() || 1, cur = lensIndex(), best = m[0], bestD = Infinity;
+    m.forEach(function (i) {
+      var d = Math.abs(i - cur);
+      d = Math.min(d, n - d);
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    turnWheelToIndex(best);
+  }
+
+  // Tasten: ← → drehen (bei einer Suche: zum naechsten Treffer), Enter oeffnet die Lupe;
+  // im Suchfeld springen ↓ ↑ von Treffer zu Treffer
+  document.addEventListener("keydown", function (e) {
+    if (!wheelLaidOut || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (state.view === "tree" || state.focusedId !== null || hubOpen || inboxOpen() || dialogSheetOpen() ||
+        settingsModal.classList.contains("open") || state.editing) return;
+    var t = e.target;
+    var typing = !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
+    if (typing) {
+      if (t === searchInput && (e.key === "ArrowDown" || e.key === "ArrowUp") && wheelMatches().length) {
+        e.preventDefault();
+        jumpMatch(e.key === "ArrowDown" ? 1 : -1);
+      }
+      return;
+    }
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      e.preventDefault();
+      var dir = e.key === "ArrowRight" ? 1 : -1;
+      if (wheelMatches().length) jumpMatch(dir); else turnWheelBy(dir);
+    } else if (e.key === "Enter" && (!t || t === document.body || t === mapEl)) {
+      var lc = lensCore();
+      if (lc) { e.preventDefault(); toggleFocus(lc.id); }
+    }
+  });
+
   // ---------- Aufruf per Link ----------
   // index.html?neu=Text legt den Text in den Eingang (iOS-Kurzbefehl, Lesezeichen,
   // Raycast). Danach wird die Adresse bereinigt, damit Neuladen nichts verdoppelt.
@@ -8974,7 +9546,9 @@
     folderRows: folderRows, folderFileInfo: function (p) { return folderFiles.get(p) || null; }, readFolderFile: readFolderFile,
     placeInboxCard: placeInboxCard, themeWithFade: themeWithFade,
     inboxInHub: function () { return inboxInHub; }, hubRoomWanted: hubRoomWanted,
-    dialogSheetOpen: dialogSheetOpen, keyboardInset: keyboardInset, roomScale: function () { return layout.roomScale || {}; },
+    dialogSheetOpen: dialogSheetOpen, keyboardInset: keyboardInset,
+    setWheel: setWheel, turnWheelBy: turnWheelBy, turnWheelToIndex: turnWheelToIndex, wheelGeom: wheelGeom, lensIndex: lensIndex,
+    wheelState: function () { return { on: wheelLaidOut, pos: wheel.pos, target: wheel.target, turning: !!wheel.raf, lens: lensIndex(), lensId: lensCore() ? lensCore().id : null, spec: wheelSpec }; }, roomScale: function () { return layout.roomScale || {}; },
     openHubSpan: function () { return openHubSpan(layout); }, fitLongestWord: fitLongestWord, hubOpen: function () { return hubOpen; }, parseMdToCore: parseMdToCore, slugify: slugify, coreFilename: coreFilename,
     coreStatus: coreStatus, coreProgress: coreProgress, cycleDetailStatus: cycleDetailStatus,
     allTags: allTags, toggleTagFilter: toggleTagFilter, clearTagFilter: clearTagFilter, computeCounts: computeCounts,
