@@ -348,6 +348,7 @@
   .ihb-zoomctl button[data-role="zoom-reset"] { display: none; }
   .ihb-map.ihb-zoomed .ihb-zoomctl button[data-role="zoom-reset"] { display: flex; }
   .ihb-map.ihb-zoomed #cameraLayer, .ihb-map.ihb-zoomed #hubAnchor { cursor: grab; }
+  .ihb-map.ihb-zoomed { overflow: hidden; }   /* v4.4: gezoomt bleibt alles in der Karte */
   .ihb-map.ihb-zoomed.ihb-panning #cameraLayer, .ihb-map.ihb-zoomed.ihb-panning #hubAnchor { cursor: grabbing; }
   body[data-theme="minimal"] .ihb-zoomctl button { background: rgba(255,255,255,0.9); border-color: rgba(20,22,45,0.14); color: #33374f; }
   /* ---- motion ---- */
@@ -1402,9 +1403,10 @@
   body[data-theme] .ihb-inbox-pickbar .ihb-btnrow { flex-wrap: wrap; }
   body[data-theme] .ihb-inbox-pickbar .ihb-btn:disabled { opacity: .45; cursor: default; }
   body[data-theme] .ihb-inbox-day { margin: 14px 0 4px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
-  body[data-theme] .ihb-inbox-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  body[data-theme] .ihb-inbox-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 7px 0; border-bottom: 1px solid var(--line); }
   body[data-theme] .ihb-inbox-time { flex: none; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
-  body[data-theme] .ihb-inbox-text { flex: 1; min-width: 0; color: var(--text); font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+  body[data-theme] .ihb-inbox-text { flex: 1 1 110px; min-width: 0; color: var(--text); font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+  body[data-theme] .ihb-inbox-row > [data-role="inbox-sort"] { margin-left: auto; }
   body[data-theme] .ihb-inbox-row .ihb-chip { flex: none; font-size: 12px; padding: 4px 10px; }
   body[data-theme] .ihb-inbox-drop { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line-strong); background: transparent; color: var(--text-2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
   body[data-theme] .ihb-inbox-empty { margin-top: 12px; }
@@ -1438,8 +1440,53 @@
     #map.ihb-wheel .ihb-core:not(.is-focused):not(:focus-within) .ihb-del,
     #map.ihb-wheel .ihb-core:not(.is-focused):not(:focus-within) .ihb-tagbtn { visibility: hidden; }
   }
+  #map.ihb-wheel .ihb-core:not(.is-focused):not(.ihb-inlens):not(:focus-within) > button { visibility: hidden; }
   #map.ihb-turning, #map.ihb-turning .ihb-core { cursor: grabbing; }
   body[data-theme] .ihb-core.ihb-lifted { box-shadow: 0 0 0 3px var(--amber-soft), var(--shadow-lg); z-index: 30; }
+  /* ---- v4.4: Knoepfe auf dem Rand der Kugel (45 Grad), nicht an den Ecken des Kastens ---- */
+  .ihb-core > .ihb-editbtn { top: calc(14.645% - 9px); left: calc(14.645% - 9px); }
+  .ihb-core > .ihb-del { top: calc(14.645% - 9px); right: calc(14.645% - 9px); }
+  .ihb-core > .ihb-tagbtn { top: auto; bottom: calc(14.645% - 9px); left: calc(14.645% - 9px); }
+  /* ---- v4.4: Beschreibung im Fokus als Blatt ohne Schleier, die Karte bleibt bedienbar ---- */
+  body[data-theme] .ihb-overlay.ihb-dialogsheet.ihb-sheet-info { background: transparent; pointer-events: none; }
+  .ihb-overlay.ihb-dialogsheet.ihb-sheet-info .ihb-dialogcard { pointer-events: auto; }
+  body[data-theme] .ihb-dialogsheet.ihb-sheet-info .ihb-dialogcard { box-shadow: 0 -10px 40px rgba(0,0,0,.18), 0 -1px 6px rgba(0,0,0,.08); }
+  /* Tablet hochkant: das Blatt liegt unten wie am Handy, hoechstens 680 px breit */
+  body.ihb-sheetmode[data-theme] .ihb-dialogcard { left: max(0px, calc(50% - 340px)); right: max(0px, calc(50% - 340px)); top: auto;
+    bottom: var(--kb, 0px); width: auto; max-height: calc(85% - var(--kb, 0px)); border-radius: 20px 20px 0 0; }
+  /* Suche im Blatt: volle Breite, 16 px (sonst zoomt Safari beim Antippen hinein) */
+  body[data-theme] .ihb-dialogcard .ihb-searchwrap { box-shadow: none; width: auto !important; margin: 0 0 12px !important; padding: 8px 12px !important; }
+  body[data-theme] .ihb-dialogcard .ihb-search { font-size: 16px !important; }
+  /* Touch: Loeschen und Beschreibung nur am gewaehlten Detail; unsichtbar fingen sie sonst Tipps ab */
+  @media (hover: none) {
+    body[data-theme] .ihb-detail:not(.is-focused) .ihb-del,
+    body[data-theme] .ihb-detail:not(.is-focused) .ihb-notebtn { visibility: hidden; }
+  }
+  /* Tippflaechen: Planeten als Ellipse quer zum Ring (entlang bis kurz vor die
+     Nachbarn, nach innen und aussen weiter); auf Touch-Geraeten haben die
+     kleinen Knoepfe an Kugeln und Details 32 px statt 18 px */
+  #map.ihb-wheel .ihb-core::before { content: ""; position: absolute; inset: calc(-1 * var(--hitr, 0px)) calc(-1 * var(--hit, 0px));
+    border-radius: 50%; transform: rotate(var(--hita, 0deg)); }
+  @media (hover: none) {
+    .ihb-core > button::before, .ihb-detail > button::before { content: ""; position: absolute; inset: -7px; border-radius: 50%; }
+    /* unsichtbare Knoepfe nicht gewaehlter Kugeln fingen sonst den Tipp auf die Kugel ab */
+    body[data-theme] .ihb-core:not(.is-focused):not(:focus-within) > button { visibility: hidden; }
+  }
+  /* Details der gewaehlten Idee im Blatt (Hochformat) */
+  body[data-theme] .ihb-sheet-details { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 6px; }
+  body[data-theme] .ihb-sheet-details-head { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); margin: 6px 0 2px; }
+  body[data-theme] .ihb-sheet-detail { display: flex; align-items: center; gap: 10px; min-height: 46px; border-bottom: 1px solid var(--line); }
+  body[data-theme] .ihb-sheet-detail-text { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 10px 0; color: var(--text); font: inherit; font-size: 15px; line-height: 1.35; cursor: pointer; overflow-wrap: anywhere; }
+  body[data-theme] .ihb-sheet-detail[data-status="erledigt"] .ihb-sheet-detail-text { color: var(--text-3); text-decoration: line-through; }
+  body[data-theme] .ihb-sheet-status { flex: none; min-width: 88px; min-height: 34px; justify-content: center; }
+  body[data-theme] [data-status="in-arbeit"] > .ihb-sheet-status, body[data-theme] .ihb-sheet-actions .ihb-sheet-status { border-color: var(--amber); color: var(--amber); }
+  body[data-theme] .ihb-sheet-detail[data-status="erledigt"] .ihb-sheet-status { border-color: #2FA894; color: #2FA894; }
+  body[data-theme] .ihb-sheet-add { margin-top: 10px; min-height: 34px; }
+  body[data-theme] .ihb-sheet-actions { display: flex; gap: 8px; margin-top: 12px; }
+  /* im Blatt werden die Details bedient; auf der Karte zeigen sie sich ohne Knoepfe */
+  @media (hover: none) { body.ihb-sheetfocus .ihb-detail > button { display: none; } }
+  .ihb-zoomctl { transition: opacity .25s; }
+  body.ihb-sheetfocus .ihb-zoomctl { opacity: 0; pointer-events: none; }
   /* ---- Dialoge am Handy als Blatt (v4.2) ---- */
   .ihb-dialogcard .ihb-sheet-body { min-height: 0; }
   .ihb-dialogcard .ihb-display-head { margin-top: 2px; }
@@ -1637,7 +1684,7 @@
 
   <div id="captionArea"></div>
 
-  <div class="ihb-version">IdeaHub v4.3</div>
+  <div class="ihb-version">IdeaHub v4.4</div>
 
   <input id="importInput" type="file" accept=".md,text/markdown" multiple style="display:none" />
   <input id="importJsonInput" type="file" accept=".json,application/json" style="display:none" />
@@ -2044,12 +2091,17 @@
     if (focusing) {
       // The hub steps back as well. It keeps the search reachable but stops
       // eating the middle of the map, which is what makes room for the zoom.
-      hub = BASE.hub * BASE.focusHub * s;
+      var searchingNow = state.query.trim().length > 0 || state.activeTags.length > 0;
+      hub = BASE.hub * (sheetMode() && !searchingNow ? SHEET_FOCUS_HUB : BASE.focusHub) * s;
       detailW *= BASE.focusDetail;
       detailH *= BASE.focusDetail;
-      coreFocus = Math.min(BASE.coreMax * BASE.focusGrow * s, core * BASE.focusGrow,
-        2 * (r1 - hub / 2 - 10 * s), 2 * (w / 2 - r1 - BASE.edge * s));
-      core = Math.max(BASE.coreMin * 0.8 * s, core * BASE.focusShrink);
+      // im Hochformat traegt das Blatt die Beschreibung, das Hub ist klein:
+      // die gewaehlte Idee darf dort wachsen und bekommt den Platz in der Mitte
+      var grow = sheetMode() ? SHEET_FOCUS_GROW : BASE.focusGrow;
+      coreFocus = Math.min(BASE.coreMax * grow * s, core * grow,
+        2 * (r1 - hub / 2 - 10 * s), sheetMode() ? Infinity : 2 * (w / 2 - r1 - BASE.edge * s));
+      core = sheetMode() ? Math.max(BASE.coreMin * 0.5 * s, core * SHEET_FOCUS_SHRINK)
+        : Math.max(BASE.coreMin * 0.8 * s, core * BASE.focusShrink);
       if (coreFocus < core) coreFocus = core;
     }
     if (wheelGeo) {   // im Rad bleiben die Planeten Planeten, die Lupe ist das Fokusmass
@@ -2193,7 +2245,7 @@
   }
   function wheelDetailRoom(core) {
     var L = layout, own = coreDiameter(core);
-    return L.width / 2 - coreOrbit(core) - BASE.edge * L.s - own / 2 - 3 * L.s;
+    return L.width / 2 - coreOrbit(core) - BASE.edge * L.s - own / 2 - btnBerth();
   }
   function detailSizeBase(core) {
     if (detailModeFor(core) !== "full") return { w: layout.miniW, h: layout.miniH };
@@ -2282,6 +2334,13 @@
       var px = cx + orbit * Math.cos(angle);
       var py = cy + orbit * Math.sin(angle);
       out.push({ x: px, y: py, r: coreDiameter(core) / 2, id: core.id });
+      // die Knoepfe der gewaehlten Idee sind sichtbar und muessen frei bleiben
+      if (state.focusedId === core.id) {
+        var br = coreDiameter(core) / 2 * Math.SQRT1_2;
+        [[-1, -1], [1, -1], [-1, 1]].forEach(function (q) {
+          out.push({ x: px + q[0] * br, y: py + q[1] * br, r: BTN_R, owner: core.id, role: "button" });
+        });
+      }
       var slots = detailSlotsFor(core);
       if (!slots) return;
       var dsize = detailSizeFor(core);
@@ -2331,6 +2390,7 @@
         var a = list[i], b = list[j];
         // a cluster disc naturally encloses its own core; that is not a collision
         if ((a.owner && a.owner === b.id) || (b.owner && b.owner === a.id)) continue;
+        if (a.role === "button" && b.role === "button" && a.owner === b.owner) continue;
         var c = distance(a.x, a.y, b.x, b.y) - (a.r + b.r);
         if (c < worst) worst = c;
       }
@@ -2404,6 +2464,16 @@
     return worst === Infinity ? Infinity : worst;
   }
 
+  // Im Fokus faechern die Details nach aussen zum Kartenrand.
+  // Reicht der Platz dort nicht fuer ihr Wunschmass, gibt zuerst die gewaehlte
+  // Idee nach, dann erst ihre Details.
+  function wheelRoomShort(f) {
+    var fid = focusCoreId();
+    var fc = fid !== null ? coreById(fid) : null;
+    // im Hochformat darf sie weiter nachgeben: dort ist sie ohnehin gewachsen
+    if (!fc || !detailSlotsFor(fc) || layout.coreFocus <= f.focus * (sheetMode() ? 0.8 : 1)) return false;
+    return wheelDetailRoom(fc) < (layout.focusIdeal || layout.focusW);
+  }
   function fitDetailsToSectors() {
     var L = layout;
     // offenes Hub ohne Fokus: seine Kapsel ist ein Hindernis wie jede Kugel
@@ -2411,6 +2481,7 @@
     roomLaidOut = !!room;
     L.roomScale = {};
     var target = 10 * L.s;          // desired breathing room between bubbles
+    L.focusIdeal = L.focusW;        // Wunschmass der Details der gewaehlten Idee
     // Order of sacrifice: the receding cores give way first, then details, and
     // only last the focused idea and the headlines it carries.
     // Two passes with different floors. The first keeps everything at a
@@ -2435,6 +2506,8 @@
       for (var iter = 0; iter < 90; iter++) {
         var pos = computePositions();
         var worst = layoutMargin(pos);
+        // zuerst der Platz nach aussen: dafuer gibt nur die gewaehlte Idee nach
+        if (wheelRoomShort(f)) { L.coreFocus *= 0.97; prevWorst = -Infinity; continue; }
         if (worst >= f.need) break;
         // which role is actually tight decides what gives way
         var focusTight = marginForRole(pos, "focus") < f.need;
@@ -2536,7 +2609,7 @@
     var across = horizontal
       ? clampRange(Math.max(d * 1.55, 300), d, L.width * 0.80)
       : clampRange(Math.max(d * 1.8, 300), d, L.width * 0.90);
-    var lim = displayLimit(L, d, gap, Math.max(0, across - d));
+    var lim = hubDialogFloor(L, d, displayLimit(L, d, gap, Math.max(0, across - d)), horizontal);
     return { d: d, gap: Math.max(0, lim.gap), over: lim.over, horizontal: horizontal };
   }
   // Abstand eines Punkts (relativ zur Mitte) von der Kapsel: Glas als Rechteck,
@@ -2594,6 +2667,7 @@
     // a 15px bubble is larger than the space between two of them.
     var berth = (isMini ? 7 : 14) * L.s;
     berth = Math.min(berth, own * 0.16);
+    if (isFocused) berth = Math.max(berth, btnBerth());   // Stift, x und Tags auf dem Rand bleiben frei
     var minR = own / 2 + Math.max(dw, dh) / 2 + berth;
     // Hard bound: a detail must stay inside the map. Previously minR was allowed
     // to win here, which pushed the details of a focused idea clean off the map
@@ -2612,6 +2686,7 @@
   function detailSpreadDeg(count, isFocused) {
     if (count <= 1) return 0;
     var ideal = Math.min(DETAIL_MAX_SPREAD_DEG, DETAIL_IDEAL_STEP_DEG * (count - 1));
+    if (isFocused && (wheelLaidOut || sheetMode())) return ideal;
     // The focused idea is the only one showing full-size details, and it sits
     // closer to the hub, so its fan may open much wider than a sector would
     // allow. The exact fitter still verifies the result.
@@ -2638,6 +2713,14 @@
   function pctOfMap(px) { return (px / layout.width) * 100; }
   // Hard ceiling for adding through the UI. Beyond 12 the bubbles shrink faster
   // than the added ideas are worth, and a focused idea's details get very small.
+  var SHEET_FOCUS_HUB = 0.55;   // Hub im Fokus im Hochformat: die Suche steht dann im Blatt
+  var SHEET_FOCUS_SHRINK = 0.45;   // und so weit treten die anderen zurueck
+  var SHEET_FOCUS_GROW = 1.5;   // so viel darf die gewaehlte Idee dort wachsen
+  var WHEEL_FAN_GAP = 0.45;   // so viel breiter wird die Luecke am Ring je weiterem Detail
+  var BTN_R = 9;   // Knoepfe an der Kugel: 18 px, auf dem Rand, ragen 9 px heraus
+  // so viel Abstand halten die Details der gewaehlten Idee von ihrem Rand: der
+  // Knopf plus die Luft, die der Pruefer zwischen zwei Kugeln verlangt
+  function btnBerth() { return BTN_R + 10 * ((layout && layout.s) || 1) + 1; }
   var MAX_CORES = 24;   // seit v4.3: mit dem Rad bleiben auch viele Ideen lesbar
   // ---- Rad mit Lupe (v4.3) ----
   var WHEEL_KEY = "rad";
@@ -3034,6 +3117,21 @@
   function updatePositionsOnly() {
     updatePositionsCore();
     wheelFrame();
+    scaleFocusDetails();
+  }
+  // gezeichnet sind die Details in voller Groesse; unterwegs folgen sie dem Mass,
+  // mit dem auch der Pruefer rechnet (im Rad wachsen sie aus der Idee heraus)
+  function scaleFocusDetails() {
+    if (!bubblesLayer || state.view === "tree" || state.scope) return;   // in der Wolke traegt transform die Tiefe
+    var fid = focusCoreId(), fcore = fid !== null ? coreById(fid) : null;
+    if (!fcore) return;
+    var cur = detailSizeFor(fcore);
+    eachEl(bubblesLayer.querySelectorAll('[data-core-id="' + fcore.id + '"][data-role="detail"], [data-core-id="' + fcore.id + '"][data-role="ghost-detail"]'), function (el) {
+      var drawn = parseFloat(el.style.width) || cur.w || 1;
+      var k = cur.w / drawn;
+      el.style.transform = Math.abs(k - 1) < 0.002 ? "" : "scale(" + k.toFixed(4) + ")";
+      el.style.visibility = cur.w < 4 ? "hidden" : "";
+    });
   }
   function updatePositionsCore() {
     var cores = visibleCores();
@@ -3192,7 +3290,8 @@
     if (idx === -1) return 0;
     var slots = cores.length + (cores.length < MAX_CORES ? 1 : 0);
     var natural = coreAngleRaw(idx, slots);   // already the clustered angle
-    var targets = panelHorizontal()
+    // im Hochformat bleibt das Hub zu: die Idee parkt oben, wo auch die Lupe steht
+    var targets = sheetMode() ? [-Math.PI / 2] : panelHorizontal()
       ? [-Math.PI / 2, Math.PI / 2]     // hub opens sideways -> park it top or bottom
       : [Math.PI, 0];                   // hub opens vertically -> park it left or right
     var best = 0, bestDist = Infinity;
@@ -3780,6 +3879,38 @@
     }
   }
 
+  // Hochformat: die Details der gewaehlten Idee als Liste im Blatt
+  var SHEET_STATUS = { offen: "Offen", "in-arbeit": "In Arbeit", erledigt: "Erledigt" };
+  function sheetStatusChip(core, d) {
+    var st = detailStatus(d);
+    return '<button type="button" class="ihb-chip ihb-sheet-status" data-role="sheet-detail-status" data-core-id="' + core.id +
+      '" data-detail-id="' + d.id + '" aria-label="Status: ' + SHEET_STATUS[st] + ', antippen zum Ändern">' + SHEET_STATUS[st] + '</button>';
+  }
+  function sheetDetailListHtml(core) {
+    if (!core || !sheetMode()) return "";
+    var n = core.details.length;
+    var rows = core.details.map(function (d) {
+      return '<div class="ihb-sheet-detail" data-status="' + detailStatus(d) + '">' +
+        '<button type="button" class="ihb-sheet-detail-text" data-role="sheet-detail-open" data-core-id="' + core.id + '" data-detail-id="' + d.id + '">' +
+        escapeHtml(d.text || "Ohne Titel") + '</button>' + sheetStatusChip(core, d) + '</div>';
+    }).join("");
+    var add = n < MAX_DETAILS ? '<button type="button" class="ihb-chip ihb-sheet-add" data-role="sheet-detail-add" data-core-id="' + core.id + '">+ Detail</button>' : "";
+    return '<div class="ihb-sheet-details"><div class="ihb-sheet-details-head">' + (n ? n + (n === 1 ? " Detail" : " Details") : "Noch keine Details") + '</div>' + rows + add + '</div>';
+  }
+  function sheetDetailActionsHtml(core, d) {
+    if (!sheetMode()) return "";
+    return '<div class="ihb-sheet-actions">' + sheetStatusChip(core, d) +
+      '<button type="button" class="ihb-chip" data-role="sheet-detail-open" data-core-id="' + core.id + '" data-detail-id="' + d.id + '">Bearbeiten</button></div>';
+  }
+  function handleSheetListClick(e) {
+    var t = e.target.closest('[data-role^="sheet-detail-"]');
+    if (!t) return false;
+    var role = t.getAttribute("data-role"), cid = t.getAttribute("data-core-id"), did = t.getAttribute("data-detail-id");
+    if (role === "sheet-detail-status") cycleDetailStatus(cid, did);
+    else if (role === "sheet-detail-open") openDetailEditor(cid, did);
+    else if (role === "sheet-detail-add") addDetail(cid);
+    return true;
+  }
   function selectedDetailObj() {
     var sel = state.selectedDetail;
     if (!sel) return null;
@@ -3970,11 +4101,12 @@
         info = {
           kind: "Detailidee · " + stLabels[detailStatus(sel.detail)],
           title: sel.detail.text,
-          notes: (sel.detail.notes || "").trim()
+          notes: (sel.detail.notes || "").trim(),
+          extra: sheetDetailActionsHtml(sel.core, sel.detail)
         };
       } else if (state.focusedId !== null) {
         var f2 = coreById(state.focusedId);
-        if (f2) info = { kind: "Kernidee", title: f2.text, notes: (f2.notes || "").trim() };
+        if (f2) info = { kind: "Kernidee", title: f2.text, notes: (f2.notes || "").trim(), extra: sheetDetailListHtml(f2) };
       }
     }
 
@@ -3993,7 +4125,8 @@
         '<div class="ihb-info-title">' + escapeHtml(info.title || "Ohne Titel") + "</div>" +
         (info.notes
           ? '<div class="ihb-info-notes">' + escapeHtml(info.notes) + "</div>"
-          : '<div class="ihb-info-notes ihb-info-empty">Noch keine Beschreibung</div>')
+          : '<div class="ihb-info-notes ihb-info-empty">Noch keine Beschreibung</div>') +
+        (info.extra || "")
       );
     } else if (!editorActive) {
       closeHubDisplay();
@@ -4176,6 +4309,19 @@
     return html;
   }
 
+  function revealCapturePanel() {
+    if (!window.requestAnimationFrame || !window.scrollBy) return;
+    requestAnimationFrame(function () {
+      var panel = captionArea.querySelector('[data-role="capture-panel"]');
+      if (!panel || state.view === "tree") return;
+      var over = panel.getBoundingClientRect().bottom + 12 - (window.innerHeight || 0);
+      if (over <= 0) return;
+      // das Hub mit dem Suchfeld bleibt sichtbar
+      var hub = hubEl ? hubEl.getBoundingClientRect() : null;
+      var by = hub ? Math.min(over, Math.max(0, hub.top - 70)) : over;
+      if (by > 0) window.scrollBy({ top: by, behavior: state.motion ? "smooth" : "auto" });
+    });
+  }
   function renderCaptionOrQuickCreate() {
     if (state.pasteDraft) {
       captionArea.innerHTML = storageWarnHtml("ihb-caption") + pastePanelHtml();
@@ -4185,13 +4331,21 @@
     var c = computeCounts();
     if (q || (c.searching && c.matched === 0)) {
       captionArea.innerHTML = storageWarnHtml("ihb-caption") + capturePanelHtml(q, c.searching && c.matched === 0);
+      revealCapturePanel();
     } else {
+      // eine Warnung nur ueber der Grenze; darunter ist es nur ein Hinweis
+      var overFull = state.cores.length > MAX_CORES;
       var overflowNote = wheelLaidOut ? wheelNoteHtml() : state.cores.length > COMFORT_CORES
-        ? '<p class="ihb-caption ihb-caption-warn">' + state.cores.length + ' Kernideen auf der Karte' +
-          (state.cores.length > MAX_CORES ? ' — mehr als die ' + MAX_CORES + ', die sich hier anlegen lassen' : '') +
-          '. Alles wird angezeigt, die Bubbles werden dabei aber kleiner.</p>'
+        ? '<p class="ihb-caption' + (overFull ? ' ihb-caption-warn' : '') + '">' + state.cores.length + ' Kernideen auf der Karte' +
+          (overFull ? ' — mehr als die ' + MAX_CORES + ', die sich hier anlegen lassen. Alles wird angezeigt, die Bubbles werden dabei aber kleiner.'
+            : state.wheel === "aus" ? '. Mit jeder weiteren werden die Bubbles etwas kleiner.' : '. Werden es mehr, liegen sie als Planeten auf einem Rad.') + '</p>'
         : "";
-      captionArea.innerHTML = storageWarnHtml("ihb-caption") + overflowNote + compostNoteHtml("ihb-caption") + '<p class="ihb-caption"><b>Antippen</b> zeigt eine Idee im Hub · <b>Stift bzw. Tag-Symbol</b> klappt das Bearbeitungsfeld am Hub auf · <b>ziehen</b> sortiert um · <b>Mausrad, Kneifgeste oder Doppelklick</b> zoomen die Karte · leere Fläche ziehen verschiebt die Ansicht · <b>/</b> springt ins Hub-Feld, <b>Enter</b> legt dort an, eine eingefügte Liste wird als Gliederung gelesen · <b>N</b> öffnet den Eingang für schnelle Gedanken – tippen oder diktieren, markieren und bündeln; seine Punkte oben links lassen sich antippen oder auf eine Kernidee ziehen.</p>';
+      // im Rad sagt dessen Zeile, was Antippen, Ziehen und Mausrad tun
+      var shownIn = sheetMode() ? "unten im Blatt" : "im Hub";
+      var mapHelp = wheelLaidOut ? "" : '<b>Antippen</b> zeigt eine Idee ' + shownIn + ' · ';
+      var editHelp = '<b>Stift bzw. Tag-Symbol</b> ' + (sheetMode() ? 'öffnet das Bearbeitungsfeld' : 'klappt das Bearbeitungsfeld am Hub auf') + ' · ';
+      var moveHelp = wheelLaidOut ? "" : '<b>ziehen</b> sortiert um · <b>Mausrad, Kneifgeste oder Doppelklick</b> zoomen die Karte · leere Fläche ziehen verschiebt die Ansicht · ';
+      captionArea.innerHTML = storageWarnHtml("ihb-caption") + overflowNote + compostNoteHtml("ihb-caption") + '<p class="ihb-caption">' + mapHelp + editHelp + moveHelp + '<b>/</b> springt ins Hub-Feld, <b>Enter</b> legt dort an, eine eingefügte Liste wird als Gliederung gelesen · <b>N</b> öffnet den Eingang für schnelle Gedanken – tippen oder diktieren, markieren und bündeln; seine Punkte oben links lassen sich antippen oder auf eine Kernidee ziehen.</p>';
     }
   }
 
@@ -4240,8 +4394,25 @@
     });
   }
 
+  // Die Karte ist quadratisch und war bis 980 px gross: am Rechner mit 900 px
+  // Hoehe und am iPad quer lag ihr unteres Drittel unter dem Rand, samt
+  // Zoom-Knoepfen und dem Anlegen-Knopf der Suche. Jetzt passt sie unter die
+  // Kopfleiste. Gerechnet wird mit der Fensterhoehe, nicht mit vh-Einheiten.
+  var MAP_MAX = 980, MAP_FIT_MIN = 360;
+  function fitMapToWindow() {
+    if (!mapEl || mapEl.hidden) return;
+    var r = mapEl.getBoundingClientRect();
+    if (!r.width) return;   // keine Messung moeglich (verborgen, Testumgebung)
+    var top = r.top + (window.pageYOffset || 0);
+    var avail = Math.floor((window.innerHeight || 0) - top - 14);
+    var size = Math.max(MAP_FIT_MIN, Math.min(MAP_MAX, avail));
+    var next = size < MAP_MAX ? size + "px" : "";
+    if (mapEl.style.maxWidth !== next) mapEl.style.maxWidth = next;
+  }
   function renderStructure() {
     var prevRects = captureRects();
+    fitMapToWindow();
+    if (document.body) document.body.classList.toggle("ihb-sheetmode", !!dialogSheet && !isPhone() && !panelHorizontal());
     measureLayout();
     var L = layout;
     function coreStyleFor(d) {
@@ -4443,6 +4614,7 @@
     // auf kleinen Hubs passt der lange Platzhalter nicht hinein
     if (searchEl2) searchEl2.setAttribute("placeholder", L.hub < 170 ? "Suchen …" : "Ideen durchsuchen…");
     if (hubCountEl) hubCountEl.style.fontSize = Math.max(8, Math.min(12, L.hub * 0.048)) + "px";
+    if (hubCountEl) hubCountEl.style.display = L.hub < 100 ? "none" : "";
     // The reading panel is a rectangle, so the text can simply use a comfortable
     // fixed size instead of being squeezed to fit a circle.
     // Headline type follows each bubble's own diameter, so the focused idea
@@ -4465,6 +4637,7 @@
     });
     fitHeadlines();
     wheelFrame();
+    scaleFocusDetails();
   }
 
   // Last-resort fit: if a headline still does not fit its bubble, step the type
@@ -4483,21 +4656,40 @@
       if (!box) return; // no layout information available
       var sub = bubble.querySelector(".ihb-sublabel");
       var icon = bubble.querySelector(".ihb-coreicon");
-      var reserved = (sub ? sub.offsetHeight : 0) + (icon ? icon.offsetHeight + 2 : 0);
-      var budget = box * 0.82 - reserved;
-      if (budget <= 0) return;
-      var font = startFont;
-      var guard = 0;
-      while (label.scrollHeight > budget && font > 8 && guard < 14) {
-        font -= 0.7;
+      label.style.removeProperty("-webkit-line-clamp");
+      // gemessen am Innenraum: das Polster oben und unten zaehlt nicht mit
+      var bcs = getComputedStyle(bubble);
+      var cap = Math.min(box * 0.82, box - (parseFloat(bcs.paddingTop) || 0) - (parseFloat(bcs.paddingBottom) || 0) - 1);
+      var budget = cap, font = startFont;
+      // der Reihe nach: alles zeigen; ohne Untertitel; ohne Untertitel und Symbol
+      var plans = [[true, true, 9], [false, true, 8], [false, false, 8]];
+      for (var pi = 0; pi < plans.length; pi++) {
+        if (pi > 0 && !sub && !(icon && pi === 2)) continue;   // nichts wegzulassen
+        if (sub) sub.style.display = plans[pi][0] ? "" : "none";
+        if (icon) icon.style.display = plans[pi][1] ? "" : "none";
+        var reserved = (sub && plans[pi][0] ? sub.offsetHeight : 0) + (icon && plans[pi][1] ? icon.getBoundingClientRect().height + 2 : 0);
+        budget = cap - reserved;
+        font = startFont;
         label.style.fontSize = font + "px";
-        guard++;
+        var guard = 0;
+        while (budget > 0 && label.scrollHeight > budget && font > plans[pi][2] && guard < 14) {
+          font -= 0.7;
+          label.style.fontSize = font + "px";
+          guard++;
+        }
+        if (budget > 0 && label.scrollHeight <= budget + 0.5) break;
       }
+      if (budget <= 0) return;
       // If it still does not fit at the minimum size, the tooltip carries the
       // full text (already set via the title attribute).
       var fs = parseFloat(bubble.style.width) || 0;
       var fits = fitLongestWord(bubble, label, fs, fs && fs < 80 ? 7 : 8.5);   // zurueckgetretene duerfen kleiner werden
       if (sub) fitLongestWord(bubble, sub, fs, 6.5);
+      // was dann noch nicht passt, endet nach der letzten ganzen Zeile mit "..."
+      if (label.scrollHeight > budget + 0.5) {
+        var lineH = (parseFloat(label.style.fontSize) || 12) * 1.16;
+        label.style.setProperty("-webkit-line-clamp", String(Math.max(1, Math.min(3, Math.floor(budget / lineH)))));
+      }
       var off = !fits && fs > 0 && fs < 44;
       setLabelOff(bubble, label, sub, off);
       if (off) label.removeAttribute("data-fit");
@@ -4510,11 +4702,33 @@
     // Details: auch hier lieber kleiner als mitten im Wort gebrochen
     eachEl(bubblesLayer.querySelectorAll('[data-role="detail"]'), function (bubble) {
       var label = bubble.querySelector(".ihb-label");
-      if (label) fitLongestWord(bubble, label, parseFloat(bubble.style.width) || 0, 7);
+      if (!label) return;
+      var dw = parseFloat(bubble.style.width) || 0;
+      var dFits = fitLongestWord(bubble, label, dw, 7);
+      label.style.visibility = !dFits && dw > 0 && dw < 44 ? "hidden" : "";   // wie bei den Kernideen
     });
   }
 
   var resizeTimer = null;
+  var mapSizeTimer = null;
+  if (typeof ResizeObserver === "function" && mapEl) {
+    var watchMapSize = function () {
+      if (mapSizeTimer) return;
+      mapSizeTimer = setTimeout(function () {
+        mapSizeTimer = null;
+        if (state.editing || state.view === "tree" || mapEl.hidden) return;
+        var before = mapEl.style.maxWidth;
+        fitMapToWindow();
+        if (mapEl.style.maxWidth !== before || Math.abs((mapEl.clientWidth || 0) - (layout.width || 0)) > 1) renderStructure();
+      }, 60);
+    };
+    try {
+      var mapRO = new ResizeObserver(watchMapSize);
+      mapRO.observe(mapEl);
+      var tagBarEl = document.getElementById("tagFilterBar");
+      if (tagBarEl) mapRO.observe(tagBarEl);
+    } catch (e) { /* ohne Beobachter misst die Karte beim naechsten Zeichnen neu */ }
+  }
   window.addEventListener("resize", function () {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(function () {
@@ -5821,6 +6035,7 @@
   function clampRange(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
   function displayOverhang(L) {
+    if (sheetMode()) return 0;   // im Hochformat oeffnet das Hub nicht
     var d = L.hub;
     var across = panelHorizontal()
       ? clampRange(Math.max(d * 1.55, 300), d, L.width * 0.80)
@@ -5853,6 +6068,14 @@
     return { gap: d + (gap - d) * DISPLAY_REACH, over: over * DISPLAY_REACH };
   }
 
+  // Eingang, Einsortieren und Kompost sind Listen: im Querformat bekommt ihr
+  // Glas Hoehe fuer ein paar Zeilen, auch wenn die Karte klein ist.
+  var HUB_DIALOG_TALL = 400;
+  function hubDialogFloor(L, d, lim, horizontal) {
+    if (!horizontal || !hubRoomWanted()) return lim;
+    // 0.48 der Karte: so hoch, dass die Ideen schraeg darueber noch frei bleiben
+    return { gap: lim.gap, over: Math.max(lim.over, Math.min(HUB_DIALOG_TALL, L.width * 0.48) - d) };
+  }
   function layoutHub() {
     if (!hubEl) return;
     var L = layout;
@@ -5884,7 +6107,7 @@
     // wraps into more lines. Desktop 4 lines -> 5, phone 5 lines -> 7, and no
     // detail hidden on either. The number is the largest that clears them.
     if (hubOpen) {
-      var lim = displayLimit(L, d, gap, over);
+      var lim = hubDialogFloor(L, d, displayLimit(L, d, gap, over), horizontal);
       gap = Math.max(0, lim.gap);
       over = lim.over;
     }
@@ -5975,10 +6198,16 @@
   function openHubDisplay(html) {
     var node = typeof html === "string" ? null : html;   // der Eingang kommt als Knoten
     if (state.view === "tree" && treeDetail) { if (!node) treeDetail.innerHTML = html; return; }
-    // ein Dialog (Einsortieren, Kompost, Editor) geht am Handy ins Blatt; die
-    // Beschreibung im Fokus bleibt im Hub, die passt hinein
+    // im Hochformat geht alles ins Blatt: ein Dialog (Einsortieren, Kompost,
+    // Editor) als Blatt mit Schleier, die Beschreibung im Fokus ohne, damit die
+    // Karte mit der gewaehlten Idee und ihren Details bedienbar bleibt
     var dialogNow = !!(state.tagEditing || detailEditing || sortSession || compostSession);
-    if (!node && dialogNow && dialogSheetWanted()) { openDialogSheet(html); return; }
+    if (!node && dialogSheetWanted()) {
+      // gedreht von quer nach hoch: das Hub geht zu, das Blatt kommt
+      if (hubOpen) closeHubDisplay();
+      openDialogSheet(html, !dialogNow);
+      return;
+    }
     closeDialogSheet();
     clearTimeout(hubCloseTimer);
     var swap = hubOpen || hubClosing;   // das Hub ist (noch) offen: nur der Inhalt wechselt
@@ -7183,7 +7412,8 @@
       if (wheelLaidOut && state.view !== "tree" && !ringAnim.raf) {
         var wi = wheelIndexOf(cid);
         if (wi !== -1 && wi !== lensIndex()) {
-          if (state.focusedId !== null) clearFocus();
+          // wie auf der Karte ohne Rad: im Fokus wechselt ein Tipp den Fokus
+          if (state.focusedId !== null) { toggleFocus(cid); return; }
           turnWheelToIndex(wi);
           return;
         }
@@ -8927,21 +9157,36 @@
   var dialogCard = document.getElementById("dialogCard");
   var dialogAnims = [];
   var sheetHandoff = null;   // Masse des Eingangs-Blatts, das gerade uebergibt
-  function dialogSheetWanted() { return !!dialogSheet && state.view !== "tree" && isPhone(); }
+  // Hochformat (Handy, Tablet hochkant): zur Seite hat das Hub keinen Platz, das
+  // Glas waere schmal und die gewaehlte Idee laege am Rand oder darunter. Dort
+  // kommen Dialoge (seit v4.2 am Handy) und die Beschreibung im Fokus (seit v4.4)
+  // ins Blatt von unten; das Hub bleibt geschlossen, die Karte frei.
+  function sheetMode() { return !!dialogSheet && state.view !== "tree" && (isPhone() || !panelHorizontal()); }
+  function dialogSheetWanted() { return sheetMode(); }
   function dialogSheetOpen() { return !!(dialogSheet && dialogSheet.classList.contains("open")); }
   function stopDialogAnims() {
     dialogAnims.forEach(function (a) { try { a.cancel(); } catch (e) { /* schon fertig */ } });
     dialogAnims = [];
   }
-  function openDialogSheet(html) {
+  function openDialogSheet(html, info) {
     var was = dialogSheetOpen();
+    if (was && dialogCard._ihbHtml === html) return;   // nichts Neues: kein Ueberblenden
     stopDialogAnims();
     dialogSheet.classList.remove("closing");
     dialogSheet.classList.add("open");
+    var wasInfo = dialogSheet.classList.contains("ihb-sheet-info");
+    dialogSheet.classList.toggle("ihb-sheet-info", !!info);
+    if (document.body) document.body.classList.toggle("ihb-sheetfocus", !!info);
+    dialogCard._ihbHtml = html;
+    homeSearch();
     dialogCard.innerHTML = '<div class="ihb-sheet-body">' + html + "</div>";
+    // wie im offenen Hub zieht die Suche mit in die Beschreibung; das Hub ist
+    // im Fokus dann nur noch ein kleiner Ball und gibt der Idee Platz
+    var sHost = dialogCard.querySelector(".ihb-search-host");
+    if (sHost && searchWrap) sHost.appendChild(searchWrap);
     dialogCard.scrollTop = 0;
     var body = dialogCard.firstChild;
-    if (was) { fadeIn(body); return; }   // naechster Gedanke: nur der Inhalt wechselt
+    if (was) { if (!(info && wasInfo)) fadeIn(body); return; }   // naechster Gedanke: nur der Inhalt wechselt
     if (sheetHandoff) {
       // aus dem Eingang: dasselbe Blatt, es passt nur seine Hoehe an
       var to = dialogCard.getBoundingClientRect();
@@ -8953,26 +9198,35 @@
       sheetHandoff = null;
       return;
     }
-    startPeek();
+    if (!info) startPeek();   // die Beschreibung laesst das Hub geschlossen
     dialogAnims = zoomSheet(dialogCard, dialogSheet, true);
   }
+  // die Suche gehoert ins Hub, sobald das Blatt sie nicht mehr traegt
+  function homeSearch() {
+    if (searchWrap && hubFace && dialogCard && dialogCard.contains(searchWrap)) {
+      hubFace.insertBefore(searchWrap, hubFace.querySelector(".ihb-hub-count"));
+    }
+  }
   function closeDialogSheet() {
+    homeSearch();
     if (!dialogSheetOpen()) return;
     stopDialogAnims();
     dialogSheet.classList.remove("open");
     dialogSheet.classList.add("closing");
     dialogAnims = zoomSheet(dialogCard, dialogSheet, false, function () {
       if (dialogSheetOpen()) return;
-      dialogSheet.classList.remove("closing");
+      dialogSheet.classList.remove("closing", "ihb-sheet-info");
+      if (document.body) document.body.classList.remove("ihb-sheetfocus");
       stopDialogAnims();
       dialogCard.innerHTML = "";
+      dialogCard._ihbHtml = null;
       endPeek();
     }, function () { if (!dialogSheetOpen()) endPeek(); });
   }
   // Einsortieren oder Kompost beginnt: steht der Eingang am Handy als Blatt da,
   // geht er ohne Zoom und das Blatt des Dialogs nimmt seinen Platz ein
   function handOffInbox() {
-    if (dialogSheetWanted() && inboxOpen() && !inboxInHub && inboxCard) {
+    if (isPhone() && dialogSheetWanted() && inboxOpen() && !inboxInHub && inboxCard) {
       sheetHandoff = inboxCard.getBoundingClientRect();
       stopInboxAnims();
       inboxSheet.classList.remove("open", "closing");
@@ -8998,7 +9252,7 @@
       if (e.target === dialogSheet && downOnVeil) closeActiveDialog();
       downOnVeil = false;
     });
-    dialogCard.addEventListener("click", function (e) { if (!handleEditorClick(e)) handleSortClick(e); });
+    dialogCard.addEventListener("click", function (e) { if (!handleSheetListClick(e) && !handleEditorClick(e)) handleSortClick(e); });
     dialogCard.addEventListener("change", handleSortChange);
     dialogCard.addEventListener("keydown", handleEditorKeydown);
   }
@@ -9071,16 +9325,20 @@
     // werden wieder Planeten und geben dem Kranz der Details Platz
     var ft = 0;
     if (fc !== null && ids.hasOwnProperty(fc)) { center = ids[fc]; ft = Math.max(0, Math.min(1, focusProgressFor(coreById(fc)))); }
+    var fslots = fc !== null && ids.hasOwnProperty(fc) ? detailSlotsFor(coreById(fc)) : 0;
+    var boost = fslots > 1 ? 1 + WHEEL_FAN_GAP * ft * (fslots - 1) : 1;
     var sigma = WHEEL_SIGMA + (0.35 - WHEEL_SIGMA) * ft;
-    var key = center.toFixed(5) + "|" + ft.toFixed(4) + "|" + W.n + "|" + W.R + "|" + W.p;
+    var key = center.toFixed(5) + "|" + ft.toFixed(4) + "|" + W.n + "|" + W.R + "|" + W.p + "|" + fslots;
     if (wheelCache && wheelCache.key === key) return wheelCache;
-    var n = W.n, arcs = [], weights = [], T = 0, i;
+    var n = W.n, arcs = [], weights = [], sizeW = [], T = 0, i;
     var two = 2 * sigma * sigma;
     for (i = 0; i < n; i++) {
       var k = i - center;
       k = ((k % n) + n) % n;
       if (k > n / 2) k -= n;
       var wgt = 1 + (W.lam - 1) * Math.exp(-(k * k) / two);
+      sizeW.push(wgt);   // die Kugel selbst waechst nicht mit der Luecke
+      if (k === 0 && boost > 1) wgt *= boost;
       weights.push(wgt);
       arcs.push(wgt * W.p + W.gap);
       T += wgt * W.p + W.gap;
@@ -9097,7 +9355,7 @@
     for (i = 0; i < n; i++) {
       var alpha = Math.min(Math.PI, arcs[i] / T * Math.PI * 2);
       angles.push(mids[i] + off);
-      diams.push(Math.max(2, Math.min(weights[i] * W.p, 2 * W.R * Math.sin(alpha / 2) - W.gap)));
+      diams.push(Math.max(2, Math.min(sizeW[i] * W.p, 2 * W.R * Math.sin(alpha / 2) - W.gap)));
     }
     wheelCache = { key: key, angles: angles, diams: diams, weights: weights, ids: ids };
     return wheelCache;
@@ -9146,7 +9404,8 @@
   function lensHtml() {
     var W = wheelSpec;
     if (!W) return "";
-    var pos = polar(HUB.x, HUB.y, pctOfMap(W.R), LENS_ANGLE + ringRotation()), d = W.lensD + 16;
+    var pos = polar(HUB.x, HUB.y, pctOfMap(W.R), LENS_ANGLE + ringRotation());
+    var d = Math.max(W.lensD + 4, Math.min(W.lensD + 16, 2 * (layout.width / 2 - W.R) - 1));
     return '<div class="ihb-lens' + (focusCoreId() !== null ? " is-off" : "") + '" aria-hidden="true" style="--x:' + pos.x + "%;--y:" + pos.y +
       "%;width:" + d + "px;height:" + d + 'px;"></div>';
   }
@@ -9156,7 +9415,7 @@
     try { touch = !!(window.matchMedia && window.matchMedia("(hover: none)").matches); } catch (e) { /* Maus */ }
     return '<p class="ihb-caption' + (over ? " ihb-caption-warn" : "") + '">' + visibleCores().length + " Kernideen im Rad" + over + ": " +
       (touch ? "<b>am Ring ziehen</b> dreht es" : "<b>ziehen</b>, <b>Mausrad</b> oder <b>← →</b> drehen es") + ", " +
-      "<b>Antippen</b> holt eine Idee in die Lupe, dort öffnet ein zweites Antippen sie im Hub · <b>lange drücken</b> und ziehen sortiert um · " +
+      "<b>Antippen</b> holt eine Idee in die Lupe, dort öffnet ein zweites Antippen sie " + (sheetMode() ? "unten im Blatt" : "im Hub") + " · <b>lange drücken</b> und ziehen sortiert um · " +
       (touch ? "<b>Kneifen</b> zoomt.</p>" : "<b>Strg + Mausrad</b> oder Kneifen zoomt.</p>");
   }
   function setWheel(v) {
@@ -9187,18 +9446,11 @@
       lens.style.setProperty("--y", lp.y + "%");
       lens.classList.toggle("is-off", focusCoreId() !== null);
     }
-    // die Details der gewaehlten Idee wachsen mit, gezeichnet sind sie in voller Groesse
-    var fcore = focusCoreId() !== null ? coreById(focusCoreId()) : null;
-    if (fcore) {
-      var cur = detailSizeFor(fcore);
-      eachEl(bubblesLayer.querySelectorAll('[data-core-id="' + fcore.id + '"][data-role="detail"], [data-core-id="' + fcore.id + '"][data-role="ghost-detail"]'), function (el) {
-        var drawn = parseFloat(el.style.width) || cur.w || 1;
-        var k = cur.w / drawn;
-        el.style.transform = Math.abs(k - 1) < 0.002 ? "" : "scale(" + k.toFixed(4) + ")";
-        el.style.visibility = cur.w < 4 ? "hidden" : "";
-      });
-    }
     var minD = wheelSpec ? wheelSpec.p * wheelScale() * 1.6 : 0, maxD = wheelSpec ? wheelSpec.lensD : 1;
+    var inLens = lensCore();
+    eachEl(bubblesLayer.querySelectorAll('[data-role="core"]'), function (el) {
+      el.classList.toggle("ihb-inlens", !!inLens && el.getAttribute("data-core-id") === String(inLens.id));
+    });
     eachEl(bubblesLayer.querySelectorAll('[data-role="core"]'), function (el) {
       var d = parseFloat(el.style.width) || 0;
       var lab = el.querySelector(".ihb-label"), sub = el.querySelector(".ihb-sublabel");
@@ -9214,7 +9466,11 @@
         var show = d >= 40 && font >= 6.5;
         lab.style.visibility = show ? "" : "hidden";
         if (show) lab.style.fontSize = font.toFixed(2) + "px";
+        lab.style.removeProperty("-webkit-line-clamp");
+        var ico = el.querySelector(".ihb-coreicon");
+        if (ico) ico.style.display = d >= 64 ? "" : "none";
       }
+      if (sub) sub.style.display = "";
       if (sub) {
         sub.classList.remove("ihb-label-off", "ihb-label-out", "ihb-label-in");
         var showSub = d >= 96;
@@ -9223,6 +9479,10 @@
       }
       // Speiche und Fortschritt nur zu den grossen hin
       var id = el.getAttribute("data-core-id");
+      el.style.setProperty("--hit", wheelHitPad(id, d).toFixed(1) + "px");
+      var hitR = wheelHitRadial(id, d);
+      el.style.setProperty("--hitr", hitR.pad.toFixed(1) + "px");
+      el.style.setProperty("--hita", hitR.ang.toFixed(1) + "deg");
       var f = Math.max(0, Math.min(1, (d - minD) / Math.max(1, maxD - minD)));
       ["line[data-line-core=\"" + id + "\"][data-line-kind=\"core\"]", "line[data-line-progress=\"" + id + "\"]"].forEach(function (sel) {
         var ln = linesLayer.querySelector(sel);
@@ -9234,6 +9494,27 @@
   }
 
   // ---- Drehen ----
+  // wie weit die Tippflaeche eines Planeten entlang des Rings ueber ihn
+  // hinausreicht: bis kurz vor die Nachbarn, hoechstens 44 px im Durchmesser
+  function wheelHitPad(id, d) {
+    var g = wheelGeom();
+    if (!g || !g.ids.hasOwnProperty(id) || focusCoreId() !== null) return 0;
+    var i = g.ids[id], n = g.angles.length, R = layout.r1, k = wheelScale(), reach = 22;
+    [-1, 1].forEach(function (step) {
+      var j = ((i + step) % n + n) % n;
+      var dist = 2 * R * Math.abs(Math.sin((g.angles[j] - g.angles[i]) / 2));
+      reach = Math.min(reach, dist - g.diams[j] * k / 2 - 1, dist / 2);
+    });
+    return Math.max(0, reach - d / 2);
+  }
+  // ... und quer dazu, nach innen bis kurz vor das Hub: dort liegt kein Nachbar
+  function wheelHitRadial(id, d) {
+    var g = wheelGeom();
+    if (!g || !g.ids.hasOwnProperty(id) || focusCoreId() !== null) return { pad: 0, ang: 0 };
+    var R = layout.r1;
+    var reach = Math.min(22, R - layout.hub / 2 - 4, layout.width / 2 - R - 2);
+    return { pad: Math.max(0, reach - d / 2), ang: (g.angles[g.ids[id]] + ringRotation()) * 180 / Math.PI - 90 };
+  }
   function wheelBusy() { return !wheelLaidOut || state.view === "tree" || state.focusedId !== null || !!ringAnim.raf; }
   function setWheelPos(p) {
     wheel.pos = p;
@@ -9305,7 +9586,7 @@
     if (e.touches && e.touches.length !== 1) { wheel.gesture = null; return; }
     if (e.button !== undefined && e.button !== 0) return;
     var t = e.target;
-    if (!t || !t.closest || t.closest("#hub, .ihb-inboxdots, button, input, [data-role=\"ghost-core\"], [data-role=\"detail\"]")) return;
+    if (!t || !t.closest || t.closest("#hub, .ihb-inboxdots, button, input, [data-role=\"detail\"]")) return;
     var onCore = t.closest('[data-role="core"]');
     var p = pointerXY(e), q = ringPointAngle(p.x, p.y);
     if (!onCore && (q.d < layout.hub / 2 || q.d > layout.width / 2)) return;   // nur im Band des Rings
