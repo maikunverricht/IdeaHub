@@ -273,6 +273,7 @@
   .ihb-display-body {
     opacity: 0; text-align: left;
     height: 100%;
+    position: absolute; top: 0; left: 50%;   /* Endbreite, mittig: die Flaeche gibt den Inhalt frei wie ein Vorhang */
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;      /* reaching the end must not scroll the page */
@@ -285,7 +286,7 @@
   body[data-theme="minimal"] .ihb-display-body::-webkit-scrollbar-thumb { background: rgba(20,22,45,0.25); }
   .ihb-hub.open .ihb-display-body { opacity: 1; }
   body[data-motion="on"] .ihb-display-body {
-    transition: opacity calc(0.42s * var(--sp)) ease calc(0.4s * var(--sp));
+    transition: opacity calc(0.36s * var(--sp)) ease calc(0.22s * var(--sp));
   }
   .ihb-hub-face {
     position: absolute;
@@ -295,7 +296,11 @@
     z-index: 4;
   }
   .ihb-hub.open .ihb-hub-face { opacity: 0; pointer-events: none; }
-  body[data-motion="on"] .ihb-hub-face { transition: opacity calc(0.22s * var(--sp)) ease; }
+  /* Titel und Suchfeld erst zeigen, wenn die Haelften fast wieder zusammen sind;
+     beim Oeffnen sofort ausblenden */
+  body[data-motion="on"] .ihb-hub-face { transition: opacity calc(0.25s * var(--sp)) ease calc(0.62s * var(--sp)); }
+  body[data-motion="on"] .ihb-hub.open .ihb-hub-face,
+  body[data-motion="on"] .ihb-hub.ihb-peek .ihb-hub-face { transition: opacity calc(0.12s * var(--sp)) ease 0s; }
   body[data-motion="on"] .ihb-hub,
   body[data-motion="on"] .ihb-cap,
   body[data-motion="on"] .ihb-display {
@@ -1363,8 +1368,15 @@
   body[data-theme] .ihb-inboxbtn.is-empty .ihb-inboxcount { display: none; }
   body[data-theme] .ihb-inboxbtn.is-full { border-color: var(--amber); }
   body[data-theme] .ihb-inboxbtn.is-full .ihb-inboxcount { background: var(--amber); color: var(--ink); }
-  body[data-theme] .ihb-inboxsheet { align-items: flex-start; }
-  body[data-theme] .ihb-inboxcard { max-width: 540px; width: 100%; margin-top: 64px; max-height: calc(100% - 84px); overflow-y: auto; }
+  /* Eingang aus dem Hub: leichter Schleier statt Abdunkeln, das Fenster steht
+     ueber dem Hub (Lage per Skript) und hebt sich durch seinen Schatten ab */
+  body[data-theme] .ihb-overlay.ihb-inboxsheet { padding: 0; background: rgba(4,7,11,.20); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  body[data-theme="minimal"] .ihb-overlay.ihb-inboxsheet { background: rgba(30,40,60,.07); }
+  .ihb-overlay.ihb-inboxsheet.open, .ihb-overlay.ihb-inboxsheet.closing { display: block; }
+  .ihb-overlay.ihb-inboxsheet.closing { pointer-events: none; }
+  body[data-theme] .ihb-inboxcard { position: absolute; margin: 0; left: var(--ib-left, calc(50% - 270px)); top: var(--ib-top, 64px);
+    width: min(540px, calc(100% - 32px)); max-width: none; max-height: calc(100% - 88px); overflow-y: auto;
+    box-shadow: 0 28px 70px rgba(0,0,0,.34), 0 2px 10px rgba(0,0,0,.16); }
   body[data-theme] #inboxInput { width: 100%; margin: 4px 0 2px; }
   body[data-theme] .ihb-inbox-inputrow { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; }
   body[data-theme] .ihb-inbox-inputrow #inboxInput { flex: 1; min-width: 0; margin: 0; }
@@ -1397,8 +1409,7 @@
   body[data-theme] .ihb-inbox-drop { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line-strong); background: transparent; color: var(--text-2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
   body[data-theme] .ihb-inbox-empty { margin-top: 12px; }
   @media (max-width: 599px) {
-    body[data-theme] .ihb-inboxsheet { align-items: flex-end; padding: 0; }
-    body[data-theme] .ihb-inboxcard { margin-top: 0; max-width: none; max-height: 85%; border-radius: 20px 20px 0 0; }
+    body[data-theme] .ihb-inboxcard { left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: 85%; border-radius: 20px 20px 0 0; }
   }
   /* ---- Einsortier-Dialog ---- */
   body[data-theme] .ihb-sort { outline: none; display: flex; flex-direction: column; gap: 8px; }
@@ -1416,6 +1427,47 @@
   body[data-theme] .ihb-inbox-handle { flex: none; cursor: grab; color: var(--text-3); touch-action: none; user-select: none; font-size: 14px; line-height: 1; padding: 2px; }
   body[data-theme] .ihb-inbox-row.is-match .ihb-inbox-text { color: var(--amber); }
   body[data-theme] .ihb-inboxsheet.is-dragging { opacity: .12; pointer-events: none; transition: opacity .2s; }
+  /* ---- Eingang im Hub (v4.1) ---- */
+  .ihb-overlay.ihb-inboxsheet.in-hub { display: none !important; }
+  #hubDisplayBody .ihb-inboxcard { position: static; left: auto; top: auto; width: auto; max-width: none; max-height: none;
+    overflow: visible; margin: 0; padding: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+  #hubDisplayBody .ihb-inboxcard > h2 { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin: 0 0 12px; padding: 0; border: 0; font-family: var(--mono); font-size: calc(10.5px * var(--dsc, 1)); font-weight: 500;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); font-variation-settings: normal; }
+  #hubDisplayBody .ihb-inboxcard > h2 > span { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  #hubDisplayBody .ihb-inboxcard > h2 > span::before { content: ""; width: 22px; height: 1px; background: var(--amber); flex: none; }
+  #hubDisplayBody .ihb-inboxcard > h2 > button { width: 30px; height: 30px; flex: none; }
+  /* ---- Uebergaenge (v4.0) ---- */
+  body[data-motion="on"] .ihb-hub .ihb-cap {
+    transition: width calc(0.85s * var(--sp)) cubic-bezier(.33,.02,.15,1),
+                height calc(0.85s * var(--sp)) cubic-bezier(.33,.02,.15,1),
+                margin-left calc(0.85s * var(--sp)) cubic-bezier(.33,.02,.15,1),
+                margin-top calc(0.85s * var(--sp)) cubic-bezier(.33,.02,.15,1),
+                left calc(0.85s * var(--sp)) cubic-bezier(.33,.02,.15,1),
+                top calc(0.85s * var(--sp)) cubic-bezier(.33,.02,.15,1),
+                opacity calc(0.3s * var(--sp)) ease,
+                transform calc(0.5s * var(--sp)) cubic-bezier(.33,.02,.15,1);
+  }
+  .ihb-hub.ihb-peek:not(.open) .ihb-cap-a { transform: translateX(calc(-1 * var(--peek, 30px))); }
+  .ihb-hub.ihb-peek:not(.open) .ihb-cap-b { transform: translateX(var(--peek, 30px)); }
+  .ihb-hub.ihb-peek.ihb-peek-v:not(.open) .ihb-cap-a { transform: translateY(calc(-1 * var(--peek, 30px))); }
+  .ihb-hub.ihb-peek.ihb-peek-v:not(.open) .ihb-cap-b { transform: translateY(var(--peek, 30px)); }
+  .ihb-hub.ihb-peek .ihb-hub-face { opacity: 0; }
+  body[data-motion="on"] .ihb-hub.ihb-peek-out:not(.ihb-peek):not(.open) .ihb-hub-face { transition: opacity calc(0.25s * var(--sp)) ease calc(0.28s * var(--sp)); }
+  body[data-theme] #settingsModal { background: rgba(4,7,11,.30); }
+  body[data-theme="minimal"] #settingsModal { background: rgba(30,40,60,.10); }
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    body[data-theme] #settingsModal { -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+  }
+  #settingsModal.closing { display: flex; pointer-events: none; }
+  .ihb-nowrap { white-space: nowrap; }
+  .ihb-core .ihb-label-off { opacity: 0; }
+  body[data-motion="on"] .ihb-core .ihb-label-out { animation: ihbLabelOut calc(0.18s * var(--sp)) ease both; }
+  body[data-motion="on"] .ihb-core .ihb-label-in { animation: ihbLabelIn calc(0.3s * var(--sp)) ease both; }
+  @keyframes ihbLabelOut { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes ihbLabelIn { from { opacity: 0; } to { opacity: 1; } }
+  body.ihb-thought-drag .ihb-core .ihb-editbtn, body.ihb-thought-drag .ihb-core .ihb-del, body.ihb-thought-drag .ihb-core .ihb-tagbtn { opacity: 0 !important; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .38s; }
   /* ---- Ordner im Blick ---- */
   body[data-theme] .ihb-file-toggle { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 4px 0; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
   body[data-theme] .ihb-file-caret { display: inline-block; width: 12px; color: var(--text-3); }
@@ -1566,7 +1618,7 @@
 
   <div id="captionArea"></div>
 
-  <div class="ihb-version">IdeaHub v3.9</div>
+  <div class="ihb-version">IdeaHub v4.1</div>
 
   <input id="importInput" type="file" accept=".md,text/markdown" multiple style="display:none" />
   <input id="importJsonInput" type="file" accept=".json,application/json" style="display:none" />
@@ -2043,7 +2095,16 @@
   // Diameter of one particular core bubble, honouring the focus zoom.
   function coreDiameter(core) {
     var t = focusProgressFor(core);
-    return layout.core + (layout.coreFocus - layout.core) * t;
+    var base = layout.core * roomFactor(core.id);
+    return base + (layout.coreFocus - base) * t;
+  }
+  // Endmass nach der laufenden Drehung (Fokus schon gesetzt oder schon aufgehoben)
+  function finalCoreDiameter(core) {
+    return state.focusedId === core.id ? layout.coreFocus : layout.core * roomFactor(core.id);
+  }
+  // Wie weit eine Idee fuer das offene Hub zuruecktritt (1 = gar nicht)
+  function roomFactor(id) {
+    return (layout.roomScale && layout.roomScale[id]) || 1;
   }
 
   // Exact fit: lay out every bubble the way the renderer will, measure the
@@ -2187,7 +2248,7 @@
     });
     if (cores.length < MAX_CORES) {
       var ga = clusterAngles().ghost + ringRotation();
-      out.push({ x: cx + L.r1 * Math.cos(ga), y: cy + L.r1 * Math.sin(ga), r: L.core / 2 });
+      out.push({ x: cx + L.r1 * Math.cos(ga), y: cy + L.r1 * Math.sin(ga), r: L.core * roomFactor(GHOST_ID) / 2, id: GHOST_ID });
     }
     // Group bubbles are measured like everything else. Leaving them out is how a
     // decorative circle silently starts overlapping the ring on a full map.
@@ -2280,6 +2341,10 @@
 
   function fitDetailsToSectors() {
     var L = layout;
+    // offenes Hub ohne Fokus: seine Kapsel ist ein Hindernis wie jede Kugel
+    var room = hubRoomWanted() ? openHubSpan(L) : null;
+    roomLaidOut = !!room;
+    L.roomScale = {};
     var target = 10 * L.s;          // desired breathing room between bubbles
     // Order of sacrifice: the receding cores give way first, then details, and
     // only last the focused idea and the headlines it carries.
@@ -2357,6 +2422,22 @@
       }
       if (layoutMargin(computePositions()) > 0) break;
     }
+    // Erst die Karte wie immer, dann treten nur die Ideen zurueck, die unter dem
+    // offenen Hub laegen. So wird keine andere groesser oder kleiner als sonst.
+    if (room) {
+      [44, 12].forEach(function (floor) {
+        for (var k = 0; k < 120; k++) {
+          var hits = roomHits(computePositions(), room, 10 * L.s);
+          if (!hits.length) return;
+          var moved = false;
+          hits.forEach(function (id) {
+            var fac = L.roomScale[id] || 1;
+            if (L.core * fac > floor * L.s) { L.roomScale[id] = fac * 0.95; moved = true; }
+          });
+          if (!moved) return;
+        }
+      });
+    }
     if (L.coreFocus < L.core) L.coreFocus = L.core;
     // The crown size was worked out before this loop ran, from a focus size the
     // loop has since shrunk. Re-apply the cap here, at the end: a detail must
@@ -2374,6 +2455,63 @@
       L.focusW = L.detailW;
       L.focusH = L.detailH;
     }
+  }
+
+  // ---------- Platz um das offene Hub (v4.1) ----------
+  // Spannweite des geoeffneten Hubs wie in layoutHub(); die Hoehe des Glases
+  // ist hier noch unbekannt, also gilt die groesste, die es annehmen kann.
+  var GHOST_ID = "__ghost";
+  var roomLaidOut = false;   // die zuletzt gemessene Karte macht Platz
+  function openHubSpan(L) {
+    var d = L.hub, horizontal = panelHorizontal();
+    var gap = horizontal
+      ? clampRange(Math.max(240, d * 1.35), L.width * 0.32, L.width * 0.62)
+      : clampRange(Math.max(190, d * 1.05), L.width * 0.34, L.width * 0.58);
+    var across = horizontal
+      ? clampRange(Math.max(d * 1.55, 300), d, L.width * 0.80)
+      : clampRange(Math.max(d * 1.8, 300), d, L.width * 0.90);
+    var lim = displayLimit(L, d, gap, Math.max(0, across - d));
+    return { d: d, gap: Math.max(0, lim.gap), over: lim.over, horizontal: horizontal };
+  }
+  // Abstand eines Punkts (relativ zur Mitte) von der Kapsel: Glas als Rechteck,
+  // die Haelften als Kreise an seinen Enden
+  function capsuleDistance(dx, dy, sp) {
+    var along = sp.horizontal ? Math.abs(dx) : Math.abs(dy);
+    var across = sp.horizontal ? Math.abs(dy) : Math.abs(dx);
+    var g = sp.gap / 2, h = (sp.d + sp.over) / 2;
+    var rx = Math.max(along - g, 0), ry = Math.max(across - h, 0);
+    var rect = Math.sqrt(rx * rx + ry * ry);
+    var disc = Math.sqrt((along - g) * (along - g) + across * across) - sp.d / 2;
+    return Math.min(rect, disc);
+  }
+  // Ideen, die der Kapsel naeher kommen als need
+  function roomHits(pos, sp, need) {
+    var c = layout.width / 2, out = [];
+    pos.forEach(function (p) {
+      var id = p.id;   // nur Ideen und der Platzhalter; die stummen Punkte duerfen am Rand liegen
+      if (!id || out.indexOf(id) !== -1) return;
+      if (capsuleDistance(p.x - c, p.y - c, sp) - p.r < need) out.push(id);
+    });
+    return out;
+  }
+  // Offenes Hub ohne gewaehlte Idee: Eingang, Einsortieren oder Kompost. Am Handy
+  // nicht: dort ist die Kapsel breiter als der Ring, Zuruecktreten hiesse Verschwinden.
+  function hubRoomWanted() {
+    if (state.view === "tree" || focusCoreId() !== null || (layout.width || 0) < 600) return false;
+    return !!(sortSession || compostSession || (inboxInHub && inboxOpen()));
+  }
+  // Nach dem Oeffnen oder Schliessen einmal neu messen, wenn sich der Bedarf
+  // geaendert hat; das FLIP von renderStructure laesst die Ideen dabei gleiten.
+  var roomCheckQueued = false;
+  function refreshRoom() {
+    if (roomCheckQueued) return;
+    roomCheckQueued = true;
+    Promise.resolve().then(function () {
+      roomCheckQueued = false;
+      if (state.view === "tree" || ringAnim.raf) return;   // die Drehung misst am Ende selbst
+      if (hubRoomWanted() === roomLaidOut) return;
+      renderStructure();
+    });
   }
 
   function detailRadiusPx(count, ownerDiameter, size, orbit, isFocused) {
@@ -2826,12 +2964,13 @@
           var prog = Math.abs(ringAnim.focusTarget - ringAnim.focusFrom) > 0.001
             ? Math.abs(ringAnim.focusP - ringAnim.focusFrom) / Math.abs(ringAnim.focusTarget - ringAnim.focusFrom)
             : 1;
-          dia = was + (dia - was) * Math.min(1, prog);
+          dia = was + (finalCoreDiameter(core) - was) * Math.min(1, prog);
         }
         el.style.width = dia + "px";
         el.style.height = dia + "px";
         el.style.marginLeft = (-dia / 2) + "px";
         el.style.marginTop = (-dia / 2) + "px";
+        scaleCoreLabel(el, dia);   // die Schrift waechst und schrumpft mit, sonst bricht sie unterwegs mitten im Wort
       }
       var line = linesLayer.querySelector('line[data-line-core="' + core.id + '"][data-line-kind="core"]');
       if (line) { line.setAttribute("x2", pos.x); line.setAttribute("y2", pos.y); }
@@ -2936,8 +3075,10 @@
         // sizes keep whatever the last frame computed, which can differ slightly
         // from a clean measurement and would drift over repeated open/close.
         ringMoving = true;
+        var settleFrom = captureCoreSizes();
         renderStructure();
         ringMoving = false;
+        growToRest(settleFrom);
         var queued = ringSettleQueue;
         ringSettleQueue = [];
         queued.forEach(function (fn) { try { fn(); } catch (err) { /* eine Folgeaufgabe darf die Drehung nicht stoeren */ } });
@@ -3608,6 +3749,12 @@
       swapDisplay(function () { toggleFocus(id); });
       return;
     }
+    if (inboxInHub && inboxOpen() && id !== state.focusedId) {
+      closeInbox();
+      clearTimeout(displaySwapTimer);
+      displaySwapTimer = setTimeout(function () { toggleFocus(id); }, motionEnabled() ? Math.round(560 * speedFactor()) : 0);
+      return;
+    }
     clearTimeout(displaySwapTimer);
     // Focusing always plays out at the resting view: if the hub split open
     // while the user was zoomed in on a bubble on the far side of the ring,
@@ -3692,7 +3839,7 @@
   }
 
   function updateHubCount() {
-    var editorActive = !!(state.tagEditing || detailEditing || sortSession || compostSession);
+    var editorActive = !!(state.tagEditing || detailEditing || sortSession || compostSession || (inboxInHub && inboxOpen()));
     var c = computeCounts();
     var coresCount = visibleCores().length;
     // While an idea is focused the hub carries its description: the space is
@@ -3747,6 +3894,10 @@
     hubCountEl.textContent = reallySearching
       ? c.matched + " Treffer" + inboxHitNote() + compostHitNote()
       : coresCount + " Kernideen · " + (c.total - coresCount) + " Details";
+    // umbrechen nur zwischen den Teilen, nie mitten in "4 Details"
+    hubCountEl.innerHTML = hubCountEl.textContent.split(" · ").map(function (s) {
+      return '<span class="ihb-nowrap">' + escapeHtml(s) + "</span>";
+    }).join(" · ");
     renderInboxDots();
   }
 
@@ -3990,7 +4141,6 @@
     function coreStyleFor(d) {
       return "width:" + d + "px;height:" + d + "px;margin-left:" + (-d / 2) + "px;margin-top:" + (-d / 2) + "px;";
     }
-    var coreStyle = coreStyleFor(L.core);
     var corePos = {};
     var cores = visibleCores();
     var showGhostCore = !state.scope && state.query.trim().length === 0 &&
@@ -4115,7 +4265,7 @@
       var gAngle = clusterAngles().ghost + ringRotation();
       var gPos = polar(HUB.x, HUB.y, R1, gAngle);
       bubblesHtml += '<div class="ihb-bubble ihb-core ihb-ghost" role="button" tabindex="0" data-role="ghost-core" ' +
-        'style="' + coreStyle + '--x:' + gPos.x + '%;--y:' + gPos.y + '%;" aria-label="Neue Kernidee hinzufügen">' + icon("plus", 18) + '</div>';
+        'style="' + coreStyleFor(L.core * roomFactor(GHOST_ID)) + '--x:' + gPos.x + '%;--y:' + gPos.y + '%;" aria-label="Neue Kernidee hinzufügen">' + icon("plus", 18) + '</div>';
     }
 
     groupBubbles().forEach(function (g) {
@@ -4183,6 +4333,8 @@
     if (titleEl) titleEl.style.fontSize = Math.max(11, Math.min(21, L.hub * 0.085)) + "px";
     var searchEl2 = document.getElementById("searchInput");
     if (searchEl2) searchEl2.style.fontSize = Math.max(10, Math.min(16, L.hub * 0.063)) + "px";
+    // auf kleinen Hubs passt der lange Platzhalter nicht hinein
+    if (searchEl2) searchEl2.setAttribute("placeholder", L.hub < 170 ? "Suchen …" : "Ideen durchsuchen…");
     if (hubCountEl) hubCountEl.style.fontSize = Math.max(8, Math.min(12, L.hub * 0.048)) + "px";
     // The reading panel is a rectangle, so the text can simply use a comfortable
     // fixed size instead of being squeezed to fit a circle.
@@ -4214,6 +4366,10 @@
     eachEl(bubblesLayer.querySelectorAll('[data-role="core"]'), function (bubble) {
       var label = bubble.querySelector(".ihb-label");
       if (!label) return;
+      var small = parseFloat(bubble.style.width) || 0;
+      var padX = small && small < 80 ? Math.max(2, Math.round(small * 0.05)) + "px" : "";
+      bubble.style.paddingLeft = padX;
+      bubble.style.paddingRight = padX;
       var startFont = parseFloat(label.style.fontSize) || 12;
       var box = bubble.clientHeight;
       if (!box) return; // no layout information available
@@ -4231,6 +4387,22 @@
       }
       // If it still does not fit at the minimum size, the tooltip carries the
       // full text (already set via the title attribute).
+      var fs = parseFloat(bubble.style.width) || 0;
+      var fits = fitLongestWord(bubble, label, fs, fs && fs < 80 ? 7 : 8.5);   // zurueckgetretene duerfen kleiner werden
+      if (sub) fitLongestWord(bubble, sub, fs, 6.5);
+      var off = !fits && fs > 0 && fs < 44;
+      setLabelOff(bubble, label, sub, off);
+      if (off) label.removeAttribute("data-fit");
+      else label.setAttribute("data-fit", label.style.fontSize);      // Zielschrift fuer die Drehung merken
+      label.setAttribute("data-fit-d", fs);
+      if (sub) { if (off) sub.removeAttribute("data-fit"); else sub.setAttribute("data-fit", sub.style.fontSize || getComputedStyle(sub).fontSize); }
+      var cs = getComputedStyle(bubble);
+      label.setAttribute("data-fit-in", (bubble.offsetWidth - bubble.clientWidth) + (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0));
+    });
+    // Details: auch hier lieber kleiner als mitten im Wort gebrochen
+    eachEl(bubblesLayer.querySelectorAll('[data-role="detail"]'), function (bubble) {
+      var label = bubble.querySelector(".ihb-label");
+      if (label) fitLongestWord(bubble, label, parseFloat(bubble.style.width) || 0, 7);
     });
   }
 
@@ -5605,6 +5777,29 @@
       gap = Math.max(0, lim.gap);
       over = lim.over;
     }
+    if (hubOpen && hubDisplayBody) {
+      // Inhalt gleich in Endbreite setzen: so bricht waehrend der Bewegung nichts
+      // um, die wachsende Flaeche gibt ihn nur frei. Dann die Glasflaeche nach
+      // dem Inhalt bemessen - mindestens so hoch wie der Hub.
+      var finalW = horizontal ? Math.max(0, gap) : d + over;
+      var bodyW = Math.min(finalW, 480);
+      // Type is scaled from the map, not left at fixed pixels: on a phone the
+      // panel is far smaller, so unscaled text swamped it. The floor keeps
+      // labels and inputs readable at the smallest sizes.
+      hubDisplay.style.setProperty("--dsc", clampRange(L.s * 0.92, 0.9, 1).toFixed(3));
+      hubDisplayBody.style.padding = Math.round(Math.max(10, finalW * 0.045)) + "px " +
+        Math.round(Math.max(14, finalW * 0.055)) + "px";
+      hubDisplayBody.style.maxWidth = "480px";
+      hubDisplayBody.style.width = bodyW + "px";
+      hubDisplayBody.style.marginLeft = (-bodyW / 2) + "px";
+      hubDisplayBody.style.height = "auto";
+      var need = hubDisplayBody.offsetHeight;   // 0, wo nichts gemessen werden kann
+      hubDisplayBody.style.height = "";
+      if (need > 0) {
+        if (horizontal) over = Math.max(0, Math.min(over, need - d));
+        else gap = Math.max(Math.min(gap, d), Math.min(gap, need));
+      }
+    }
     var w = horizontal ? d + gap : d + over;
     var h = horizontal ? d + over : d + gap;
 
@@ -5644,22 +5839,15 @@
       hubFace.style.marginLeft = (-d / 2) + "px";
       hubFace.style.marginTop = (-d / 2) + "px";
       hubFace.style.height = d + "px";
-      hubFace.style.left = (horizontal ? w / 2 : ox + d / 2) + "px";
-      hubFace.style.top = (horizontal ? oy + d / 2 : h / 2) + "px";
+      // Mitte der Kapsel, in Prozent: folgt ihr auch waehrend sie waechst oder
+      // schrumpft (mit Pixeln sprang der Titel sofort auf das Endmass)
+      hubFace.style.left = "50%";
+      hubFace.style.top = "50%";
       hubFace.style.position = "absolute";
       hubFace.style.padding = "0 " + (d * 0.085) + "px";
     }
-    if (hubDisplayBody) {
-      var dispW = horizontal ? Math.max(0, gap) : w;
-      // Type is scaled from the map, not left at fixed pixels: on a phone the
-      // panel is far smaller, so unscaled text swamped it. The floor keeps
-      // labels and inputs readable at the smallest sizes.
-      hubDisplay.style.setProperty("--dsc", clampRange(L.s * 0.92, 0.9, 1).toFixed(3));
-      hubDisplayBody.style.padding = Math.round(Math.max(10, dispW * 0.045)) + "px " +
-        Math.round(Math.max(14, dispW * 0.055)) + "px";
-      hubDisplayBody.style.maxWidth = "480px";
-      hubDisplayBody.style.margin = "0 auto";
-    }
+    // Schliessend bleibt der Inhalt in seiner Breite stehen und wird von der
+    // schrumpfenden Flaeche verdeckt, statt sich zusammenzuquetschen.
   }
 
   function positionHubEditor() { layoutHub(); }
@@ -5673,14 +5861,31 @@
   }
 
   function openHubDisplay(html) {
-    if (state.view === "tree" && treeDetail) { treeDetail.innerHTML = html; return; }
+    var node = typeof html === "string" ? null : html;   // der Eingang kommt als Knoten
+    if (state.view === "tree" && treeDetail) { if (!node) treeDetail.innerHTML = html; return; }
     clearTimeout(hubCloseTimer);
-    hubDisplayBody.innerHTML = html;
+    var swap = hubOpen || hubClosing;   // das Hub ist (noch) offen: nur der Inhalt wechselt
+    hubClosing = false;
+    if (node !== inboxCardEl) handOverInbox();   // was sonst ins Hub kommt, loest den Eingang ab
+    if (node) {
+      if (node.parentNode !== hubDisplayBody || hubDisplayBody.childNodes.length !== 1) {
+        hubDisplayBody.innerHTML = "";
+        hubDisplayBody.appendChild(node);
+      } else swap = false;
+    } else {
+      homeInboxCard();
+      hubDisplayBody.innerHTML = html;
+    }
+    if (swap) fadeIn(hubDisplayBody);
+    refreshRoom();
     var host = hubDisplayBody.querySelector(".ihb-search-host");
     if (host && searchWrap) host.appendChild(searchWrap);
     hubOpen = true;
     hubEl.classList.add("open");
     layoutHub();
+    // was danach noch in die Flaeche gezeichnet wird (Symbole, Vorschlaege),
+    // zaehlt fuer die Hoehe mit
+    requestAnimationFrame(function () { if (hubOpen) layoutHub(); });
   }
 
   // Switching to another idea closes the display first and reopens it with the
@@ -5706,15 +5911,19 @@
       hubFace.insertBefore(searchWrap, hubFace.querySelector(".ihb-hub-count"));
     }
     hubOpen = false;
+    hubClosing = true;
     hubEl.classList.remove("open");
     layoutHub();
+    refreshRoom();
     // Keep the content in place while the halves close, so it shrinks away with
     // them. Clearing it straight away made it blink out mid-movement.
     var ms = Math.round(900 * speedFactor());
     hubCloseTimer = setTimeout(function () {
-      if (!hubOpen) hubDisplayBody.innerHTML = "";
+      hubClosing = false;
+      if (!hubOpen) { homeInboxCard(); hubDisplayBody.innerHTML = ""; }   // die Karte des Eingangs geht nach Hause
     }, ms);
   }
+  var hubClosing = false;
 
   function openTagEditor(coreId) {
     var core = coreById(coreId);
@@ -5812,8 +6021,21 @@
   }
 
   // ---------- settings modal ----------
-  function openSettings() { settingsModal.classList.add("open"); renderSettingsModal(); }
-  function closeSettings() { settingsModal.classList.remove("open"); }
+  function openSettings() {
+    var was = settingsModal.classList.contains("open");
+    settingsModal.classList.remove("closing");
+    settingsModal.classList.add("open");
+    renderSettingsModal();
+    if (!was) softCard(settingsModal, true);
+  }
+  function closeSettings() {
+    if (!settingsModal.classList.contains("open")) return;
+    settingsModal.classList.remove("open");
+    settingsModal.classList.add("closing");
+    softCard(settingsModal, false, function () {
+      if (!settingsModal.classList.contains("open")) settingsModal.classList.remove("closing");
+    });
+  }
   function renderSettingsModal() {
     var folderSectionHtml;
     if (folderSupported) {
@@ -6188,6 +6410,8 @@
     renderTagFilterBar();
     if (!skipRender) { renderTree(); if (!isTree) renderStructure(); }
     renderInboxDots();
+    if (!skipRender) fadeIn(isTree ? treeView : mapEl);   // ueberblenden statt hart schneiden
+    if (inboxOpen() && inboxInHub !== inboxHubPossible()) openInbox({ noFocus: true });
   }
 
   // Einmal anmelden. Frueher stand das in setView und kam bei jedem
@@ -6929,7 +7153,7 @@
   settingsBtn.addEventListener("click", openSettings);
   var themeBtnEl = document.getElementById("themeBtn");
   if (themeBtnEl) themeBtnEl.addEventListener("click", function () {
-    setTheme(state.theme === "minimal" ? "space" : "minimal");
+    themeWithFade(state.theme === "minimal" ? "space" : "minimal");
   });
   settingsModal.addEventListener("click", function (e) {
     if (e.target === settingsModal) { closeSettings(); return; }
@@ -6937,7 +7161,7 @@
     if (!t) return;
     var role = t.getAttribute("data-role");
     if (role === "close") closeSettings();
-    else if (role === "theme") setTheme(t.getAttribute("data-theme"));
+    else if (role === "theme") themeWithFade(t.getAttribute("data-theme"));
     else if (role === "links") setShowLinks(t.getAttribute("data-on") === "1");
     else if (role === "orbit") setRotate(t.getAttribute("data-on") === "1");
     else if (role === "cluster") setCluster(t.getAttribute("data-on") === "1");
@@ -6968,6 +7192,24 @@
   var inboxBtn = document.getElementById("inboxBtn");
   var inboxCountEl = document.getElementById("inboxCount");
   var sortSession = null;   // { queue: [ids], done, total, candidates }
+  // Auf der Karte am Rechner steht der Eingang im Hub, zwischen den Haelften;
+  // am Handy und im Baum bleibt er ein Fenster. Die Karte wandert dafuer.
+  var inboxCardEl = inboxSheet ? inboxSheet.querySelector(".ihb-inboxcard") : null;
+  var inboxInHub = false;
+  function inboxHubPossible() {
+    return state.view !== "tree" && !isPhone() && panelHorizontal() && !!mapEl && !mapEl.hidden && (layout.width || 0) >= 600;
+  }
+  function homeInboxCard() {
+    if (inboxCardEl && inboxSheet && inboxCardEl.parentNode !== inboxSheet) inboxSheet.appendChild(inboxCardEl);
+  }
+  // anderes uebernimmt das offene Hub: der Eingang ist dann einfach zu
+  function handOverInbox() {
+    if (!inboxInHub) return;
+    inboxInHub = false;
+    if (inboxSheet) inboxSheet.classList.remove("open", "in-hub");
+    inboxPicks = [];
+    stopDictation();
+  }
 
   function cleanInbox(list) {
     if (!Array.isArray(list)) return [];
@@ -7022,16 +7264,66 @@
     if (!inboxSheet) return;
     if (sortSession) endSort();
     if (compostSession) endCompost();
+    var was = inboxOpen();
+    var inHub = inboxHubPossible();
+    if (was && inboxInHub && !inHub) {   // aus dem Hub ins Fenster (Baum, schmales Fenster)
+      inboxInHub = false;
+      inboxSheet.classList.remove("in-hub");
+      closeHubDisplay();
+      homeInboxCard();
+      was = false;
+    }
+    if (inHub) {
+      if (was && !inboxInHub) { stopInboxAnims(); endPeek(); homeInboxCard(); }   // aus dem Fenster ins Hub
+      if (state.focusedId !== null) clearFocus();   // das Hub gehoert jetzt dem Eingang
+      inboxInHub = true;
+      inboxSheet.classList.remove("closing");
+      inboxSheet.classList.add("open", "in-hub");
+      if (!was) dictationNote = "";
+      renderInbox();
+      renderDictation();
+      if (!was || !hubOpen) { resetCamera(true); openHubDisplay(inboxCardEl); }
+      if (!opts || !opts.noFocus) { try { inboxInput.focus({ preventScroll: true }); } catch (e) { inboxInput.focus(); } }
+      return;
+    }
+    homeInboxCard();
+    inboxSheet.classList.remove("in-hub");
+    inboxSheet.classList.remove("closing");
     inboxSheet.classList.add("open");
     dictationNote = "";
     renderInbox();
     renderDictation();
-    if (!opts || !opts.noFocus) inboxInput.focus();
+    if (!was) {
+      placeInboxCard(false);
+      startPeek();
+      zoomInbox(true);
+    }
+    if (!opts || !opts.noFocus) { try { inboxInput.focus({ preventScroll: true }); } catch (e) { inboxInput.focus(); } }
   }
   function closeInbox() {
+    var was = inboxOpen();
     if (inboxSheet) inboxSheet.classList.remove("open");
     inboxPicks = [];       // eine Auswahl gilt nur, solange die Flaeche offen ist
     stopDictation();       // nie unbemerkt weiterhoeren
+    if (!was || !inboxSheet) return;
+    if (inboxInHub) {
+      // die Haelften schliessen sich um die Karte; danach geht sie nach Hause
+      inboxInHub = false;
+      inboxSheet.classList.remove("in-hub");
+      if (hubDisplayBody && hubDisplayBody.contains(inboxCardEl)) closeHubDisplay();
+      refreshRoom();
+      return;
+    }
+    // zurueck in den Hub; bis dahin bleibt das Fenster sichtbar, nimmt aber keine Klicks
+    inboxSheet.classList.add("closing");
+    zoomInbox(false, function () {
+      if (inboxOpen()) return;
+      inboxSheet.classList.remove("closing");
+      stopInboxAnims();
+      endPeek();
+    }, function () {
+      if (!inboxOpen()) endPeek();   // die Haelften schliessen sich schon um das schrumpfende Fenster
+    });
   }
   function pad2(n) { return (n < 10 ? "0" : "") + n; }
   function fmtTime(iso) { var d = new Date(iso); return pad2(d.getHours()) + ":" + pad2(d.getMinutes()); }
@@ -7074,6 +7366,7 @@
     else html += '<div class="ihb-btnrow ihb-paste-actions"><button type="button" class="ihb-btn primary" data-role="inbox-sort-all">' +
       (n >= INBOX_SIGNAL ? "Zeit zum Einsortieren – alle (" + n + ")" : "Alle einsortieren (" + n + ")") + "</button></div>";
     inboxList.innerHTML = html;
+    if (inboxOpen()) placeInboxCard(true);   // waechst die Liste, rueckt das Fenster nur so weit hoch wie noetig
   }
 
   // ---------- Einsortieren: von Ebene 1 auf die Karte ----------
@@ -7295,9 +7588,11 @@
   }, true);
 
   if (inboxBtn) inboxBtn.addEventListener("click", openInbox);
-  if (inboxSheet) {
-    inboxSheet.addEventListener("click", function (e) {
-      if (e.target === inboxSheet) { closeInbox(); return; }
+  if (inboxSheet) inboxSheet.addEventListener("click", function (e) {
+    if (e.target === inboxSheet) closeInbox();   // neben das Fenster
+  });
+  if (inboxCardEl) {
+    inboxCardEl.addEventListener("click", function (e) {
       var t = e.target.closest("[data-role]");
       if (!t) return;
       var role = t.getAttribute("data-role"), id = t.getAttribute("data-id");
@@ -7309,13 +7604,14 @@
         if (it && window.confirm("„" + it.text + "“ verwerfen?")) { removeFromInbox(id); renderInbox(); }
       }
     });
-    inboxSheet.addEventListener("keydown", function (e) {
+    inboxCardEl.addEventListener("keydown", function (e) {
       if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeInbox(); }
     });
   }
   if (inboxInput) inboxInput.addEventListener("keydown", function (e) {
     if (e.key !== "Enter") return;
     e.preventDefault();
+    e.stopPropagation();   // im Hub gehoert Enter sonst dem Editor
     if (addToInbox(inboxInput.value)) { inboxInput.value = ""; renderInbox(); }
   });
 
@@ -7401,6 +7697,7 @@
     if (d.ghost && d.ghost.parentNode) d.ghost.parentNode.removeChild(d.ghost);
     if (d.target && d.target.el) d.target.el.classList.remove("ihb-droptarget");
     if (inboxSheet) inboxSheet.classList.remove("is-dragging");
+    document.body.classList.remove("ihb-thought-drag");
     return d;
   }
   document.addEventListener("pointerdown", function (e) {
@@ -7425,6 +7722,7 @@
       d.ghost = g;
       // die Glasflaeche wird durchsichtig und laesst die Karte darunter greifen
       if (d.fromSheet && inboxSheet) inboxSheet.classList.add("is-dragging");
+      document.body.classList.add("ihb-thought-drag");   // Stift und x der Ziele verbergen
     }
     d.ghost.style.left = e.clientX + "px";
     d.ghost.style.top = e.clientY + "px";
@@ -7451,6 +7749,13 @@
     if (inboxOpen()) renderInbox();
   });
   document.addEventListener("pointercancel", endInboxDrag);
+  document.addEventListener("click", function (e) {
+    if (!inboxInHub || !inboxOpen()) return;
+    var t = e.target;
+    if (!t || !t.closest || !document.body.contains(t)) return;   // neu gezeichnet: gehoerte dazu
+    if (t.closest("#hub, .ihb-nav, .ihb-inboxdots, #settingsModal, .ihb-bubble")) return;
+    closeInbox();
+  });
   document.addEventListener("click", function (e) {
     if (Date.now() < suppressClickUntil) { e.stopPropagation(); e.preventDefault(); }
   }, true);
@@ -7577,7 +7882,7 @@
     clearTimeout(inboxNoticeTimer);
     if (text) inboxNoticeTimer = setTimeout(function () { el.textContent = ""; }, 6000);
   }
-  if (inboxSheet) inboxSheet.addEventListener("click", function (e) {
+  if (inboxCardEl) inboxCardEl.addEventListener("click", function (e) {
     var t = e.target.closest && e.target.closest("[data-role]");
     if (!t) return;
     var role = t.getAttribute("data-role"), id = t.getAttribute("data-id");
@@ -8240,6 +8545,224 @@
     else if (role === "file-show") showFromFile(t.getAttribute("data-kind"), t.getAttribute("data-id"));
   });
 
+  // ---------- Uebergaenge (v4.0) ----------
+  // Eingang aus dem Hub: die Haelften gehen ein Stueck auf ("peek"), das Fenster
+  // zoomt aus der Hubmitte heraus und sitzt ueber dem Hub; beim Schliessen
+  // schrumpft es dorthin zurueck. Ohne Bewegung erscheint es einfach.
+  var inboxCard = inboxSheet ? inboxSheet.querySelector(".ihb-inboxcard") : null;
+  var inboxAnims = [];
+  function hubPoint() {
+    if (state.view !== "map" || !hubEl || !mapEl || mapEl.hidden) return null;
+    var r = hubEl.getBoundingClientRect();
+    if (!r.width) return null;
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2, size: layout.hub || r.height };
+  }
+  function inboxOrigin() {
+    var h = hubPoint();
+    if (h) return h;
+    var b = inboxBtn && inboxBtn.getBoundingClientRect();   // im Baum: aus dem Knopf
+    if (b && b.width) return { x: b.left + b.width / 2, y: b.top + b.height / 2, size: b.height };
+    return { x: window.innerWidth / 2, y: 60, size: 40 };
+  }
+  // keepTop: beim Wachsen der Liste nicht neu zentrieren, nur so weit hoch wie noetig
+  function placeInboxCard(keepTop) {
+    if (inboxInHub) { if (hubOpen) layoutHub(); return; }
+    if (!inboxCard || !inboxSheet) return;
+    if (isPhone()) {
+      inboxSheet.style.removeProperty("--ib-left");
+      inboxSheet.style.removeProperty("--ib-top");
+      return;
+    }
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var w = Math.min(540, vw - 32), h = inboxCard.offsetHeight;
+    var c = hubPoint();
+    var left = c ? c.x - w / 2 : (vw - w) / 2;
+    left = Math.max(16, Math.min(vw - w - 16, left));
+    var prev = parseFloat(inboxSheet.style.getPropertyValue("--ib-top"));
+    var top = keepTop && !isNaN(prev) ? prev : (c ? c.y - h / 2 : 64);
+    top = Math.max(72, Math.min(vh - h - 16, top));
+    inboxSheet.style.setProperty("--ib-left", Math.round(left) + "px");
+    inboxSheet.style.setProperty("--ib-top", Math.round(top) + "px");
+  }
+  var inboxResizeTimer = null;
+  window.addEventListener("resize", function () {
+    if (!inboxOpen()) return;
+    if (!inboxInHub) placeInboxCard(false);
+    // erst nach dem Neuzeichnen der Karte (150 ms) steht fest, ob das Hub Platz hat
+    clearTimeout(inboxResizeTimer);
+    inboxResizeTimer = setTimeout(function () {
+      if (inboxOpen() && inboxInHub !== inboxHubPossible()) openInbox({ noFocus: true });   // Hub <-> Fenster
+      else if (inboxOpen()) placeInboxCard(false);
+    }, 220);
+  });
+  function startPeek() {
+    if (!hubEl || hubOpen || !motionEnabled() || !hubPoint()) return;
+    hubEl.style.setProperty("--peek", Math.round((layout.hub || 200) * 0.22) + "px");
+    hubEl.classList.toggle("ihb-peek-v", !panelHorizontal());
+    hubEl.classList.add("ihb-peek");
+  }
+  // Nach dem Spalt kommt das Gesicht frueher zurueck als nach der ganzen Anzeige:
+  // die Haelften haben nur ein kurzes Stueck zurueckzulegen.
+  var peekOutTimer = null;
+  function endPeek() {
+    if (!hubEl || !hubEl.classList.contains("ihb-peek")) return;
+    hubEl.classList.remove("ihb-peek");
+    hubEl.classList.add("ihb-peek-out");
+    clearTimeout(peekOutTimer);
+    peekOutTimer = setTimeout(function () { hubEl.classList.remove("ihb-peek-out"); }, Math.round(900 * speedFactor()));
+  }
+  function stopInboxAnims() {
+    inboxAnims.forEach(function (a) { try { a.cancel(); } catch (e) { /* schon fertig */ } });
+    inboxAnims = [];
+  }
+  // opening: aus dem Hub heraus; sonst zurueck hinein. done laeuft immer,
+  // midway (nur beim Schliessen) nach gut der Haelfte der Zeit.
+  function zoomInbox(opening, done, midway) {
+    stopInboxAnims();
+    var r = inboxCard && inboxCard.animate && motionEnabled() ? inboxCard.getBoundingClientRect() : null;
+    if (!r || !r.width) { if (done) done(); return false; }
+    var o = inboxOrigin();
+    var s = Math.max(0.06, Math.min(0.5, o.size / Math.max(r.width, r.height)));
+    var small = "translate(" + Math.round(o.x - (r.left + r.width / 2)) + "px," + Math.round(o.y - (r.top + r.height / 2)) + "px) scale(" + s.toFixed(3) + ")";
+    var radius = getComputedStyle(inboxCard).borderRadius || "20px";
+    var dur = Math.round((opening ? 520 : 380) * speedFactor());
+    var kf = opening
+      ? [{ transform: small, opacity: 0, borderRadius: "999px" }, { opacity: 1, offset: 0.3 }, { transform: "none", opacity: 1, borderRadius: radius }]
+      : [{ transform: "none", opacity: 1, borderRadius: radius }, { opacity: 1, offset: 0.55 }, { transform: small, opacity: 0, borderRadius: "999px" }];
+    var a = inboxCard.animate(kf, { duration: dur, easing: opening ? "cubic-bezier(.2,.85,.25,1)" : "cubic-bezier(.55,0,.75,.2)", fill: "forwards" });
+    var veil = getComputedStyle(inboxSheet).backgroundColor;
+    var b = inboxSheet.animate(opening
+      ? [{ backgroundColor: "rgba(0,0,0,0)" }, { backgroundColor: veil }]
+      : [{ backgroundColor: veil }, { backgroundColor: "rgba(0,0,0,0)" }], { duration: dur, easing: "ease", fill: "forwards" });
+    inboxAnims = [a, b];
+    if (midway) setTimeout(midway, Math.round(dur * 0.45));
+    a.onfinish = function () {
+      if (opening) stopInboxAnims();   // danach gelten wieder die normalen Stile
+      if (done) done();
+    };
+    return true;
+  }
+
+  // Einstellungen: leise auf und zu, ohne Umweg ueber den Hub
+  function softCard(overlay, opening, done) {
+    var card = overlay && overlay.querySelector(".ihb-card");
+    if (!card || !card.animate || !motionEnabled()) { if (done) done(); return; }
+    var dur = Math.round((opening ? 260 : 180) * speedFactor());
+    var away = { transform: "translateY(10px) scale(.985)", opacity: 0 }, here = { transform: "none", opacity: 1 };
+    var a = card.animate(opening ? [away, here] : [here, away], { duration: dur, easing: opening ? "cubic-bezier(.2,.85,.25,1)" : "ease-in", fill: "forwards" });
+    var veil = getComputedStyle(overlay).backgroundColor;
+    overlay.animate(opening ? [{ backgroundColor: "rgba(0,0,0,0)" }, { backgroundColor: veil }] : [{ backgroundColor: veil }, { backgroundColor: "rgba(0,0,0,0)" }],
+      { duration: dur, easing: "ease" });
+    a.onfinish = function () { a.cancel(); if (done) done(); };
+  }
+  // Karte und Baum blenden ineinander, statt hart zu wechseln
+  function fadeIn(el) {
+    if (!el || !el.animate || !motionEnabled()) return;
+    el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: Math.round(280 * speedFactor()), easing: "ease" });
+  }
+  // Hell und Dunkel ueberblenden; wo der Browser das nicht kann, einfach wechseln
+  function themeWithFade(t) {
+    if (t === state.theme) { setTheme(t); return; }
+    if (motionEnabled() && document.startViewTransition) {
+      try { document.startViewTransition(function () { setTheme(t); }); return; } catch (e) { /* weiter ohne */ }
+    }
+    setTheme(t);
+  }
+
+  // Lange Woerter: eher kleiner setzen als mitten im Wort brechen. Gemessen wird
+  // das laengste Wort in der Endgroesse der Bubble (sie kann gerade noch gleiten).
+  var wordMeter = null;
+  function widestWord(label, fontPx) {
+    var words = (label.textContent || "").split(/\s+/).filter(Boolean);
+    if (!words.length) return 0;
+    if (!wordMeter) {
+      wordMeter = document.createElement("span");
+      wordMeter.setAttribute("aria-hidden", "true");
+    }
+    wordMeter.className = label.className;
+    wordMeter.style.cssText = "position:absolute;left:-9999px;top:0;visibility:hidden;display:inline-block;white-space:nowrap;" +
+      "-webkit-line-clamp:none;width:auto;max-width:none;font-size:" + fontPx + "px";
+    label.parentNode.appendChild(wordMeter);
+    var max = 0;
+    words.forEach(function (w) { wordMeter.textContent = w; max = Math.max(max, wordMeter.offsetWidth); });
+    label.parentNode.removeChild(wordMeter);
+    return max;
+  }
+  function fitLongestWord(bubble, label, finalSize, minFont) {
+    var now = bubble.offsetWidth, room = label.clientWidth;
+    if (!now || !room || !finalSize) return true;   // keine Messung moeglich
+    var avail = room * (finalSize / now) * 0.97;  // Breite in der Endgroesse, mit etwas Luft fuer die Zwischengroessen
+    var font = parseFloat(label.style.fontSize) || parseFloat(getComputedStyle(label).fontSize) || 12;
+    var widest = widestWord(label, font);
+    if (widest <= avail) return true;
+    var next = Math.max(minFont, Math.floor(font * (avail / widest) * 2) / 2);
+    if (next < font) label.style.fontSize = next + "px";
+    return widest * (next / font) <= avail + 0.5;   // passt es jetzt?
+  }
+  // Ist eine Kugel zu klein fuer ihr laengstes Wort, tritt die Schrift ganz zurueck
+  // (die Kugel ist dann ohnehin nur ein Punkt) und blendet wieder ein, sobald
+  // sie gross genug ist. Gemerkt wird je Idee, damit nur der Wechsel blendet.
+  var labelsOff = {};
+  function setLabelOff(bubble, label, sub, off) {
+    var id = bubble.getAttribute("data-core-id") || "";
+    var was = !!labelsOff[id];
+    [label, sub].forEach(function (el) {
+      if (!el) return;
+      el.classList.toggle("ihb-label-off", off);
+      el.classList.toggle("ihb-label-out", off && !was);
+      el.classList.toggle("ihb-label-in", !off && was);
+    });
+    if (off) labelsOff[id] = true; else delete labelsOff[id];
+  }
+  // Schrift im Verhaeltnis zur Kugel: gemessen am Innenraum (ohne Rand und Polster),
+  // sonst wird sie in kleineren Zwischengroessen zu breit und bricht mitten im Wort.
+  function scaleCoreLabel(el, dia) {
+    var lab = el.querySelector(".ihb-label");
+    var ref = lab ? parseFloat(lab.getAttribute("data-fit-d")) : 0;
+    if (!ref) return;
+    var inset = parseFloat(lab.getAttribute("data-fit-in")) || 0;
+    var ratio = Math.max(1, dia - inset) / Math.max(1, ref - inset);
+    [lab, el.querySelector(".ihb-sublabel")].forEach(function (t) {
+      var fit = t ? parseFloat(t.getAttribute("data-fit")) : 0;
+      if (!fit) return;
+      t.style.fontSize = (fit * ratio).toFixed(2) + "px";
+      t.style.visibility = fit * ratio < 5 ? "hidden" : "";   // unter 5px ist es nur ein Fleck
+    });
+  }
+  // Nach dem Loesen des Fokus kehren die Ideen erst klein auf den Ring zurueck,
+  // dann rechnet die Karte ihr Ruhemass. Statt dahin zu springen, wachsen sie
+  // in einem kurzen zweiten Zug hinein.
+  var restGrow = null;
+  function growToRest(from) {
+    if (restGrow) { cancelAnimationFrame(restGrow); restGrow = null; }
+    if (!from || !bubblesLayer || !motionEnabled() || typeof requestAnimationFrame !== "function") return;
+    var goals = {}, any = false;
+    eachEl(bubblesLayer.querySelectorAll('[data-role="core"]'), function (el) {
+      var id = el.getAttribute("data-core-id"), to = parseFloat(el.style.width), was = from[id];
+      if (id && to && was && Math.abs(to - was) > 0.5) { goals[id] = { from: was, to: to }; any = true; }
+    });
+    if (!any) return;
+    var t0 = Date.now(), dur = 420 * speedFactor();
+    bubblesLayer.classList.add("ihb-tweening");
+    (function step() {
+      restGrow = null;
+      if (ringAnim.raf) return;            // eine neue Drehung uebernimmt
+      var p = Math.min(1, (Date.now() - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      Object.keys(goals).forEach(function (id) {
+        var el = bubblesLayer.querySelector('[data-role="core"][data-core-id="' + id + '"]');
+        if (!el) return;
+        var d = goals[id].from + (goals[id].to - goals[id].from) * e;
+        el.style.width = d + "px";
+        el.style.height = d + "px";
+        el.style.marginLeft = (-d / 2) + "px";
+        el.style.marginTop = (-d / 2) + "px";
+        scaleCoreLabel(el, d);
+      });
+      if (p < 1) restGrow = requestAnimationFrame(step);
+      else bubblesLayer.classList.remove("ihb-tweening");
+    })();
+  }
+
   // ---------- Aufruf per Link ----------
   // index.html?neu=Text legt den Text in den Eingang (iOS-Kurzbefehl, Lesezeichen,
   // Raycast). Danach wird die Adresse bereinigt, damit Neuladen nichts verdoppelt.
@@ -8329,7 +8852,10 @@
     setPhoneStart: setPhoneStart, isPhone: isPhone, sinkIntoCore: sinkIntoCore, SINK_MS: SINK_MS,
     compostCandidates: compostCandidates, startCompost: startCompost, compostState: function () { return compostSession; },
     restoreCompost: restoreCompost, setCompostDays: setCompostDays, stampCoreChanges: stampCoreChanges, openCompost: openCompost,
-    folderRows: folderRows, folderFileInfo: function (p) { return folderFiles.get(p) || null; }, readFolderFile: readFolderFile, parseMdToCore: parseMdToCore, slugify: slugify, coreFilename: coreFilename,
+    folderRows: folderRows, folderFileInfo: function (p) { return folderFiles.get(p) || null; }, readFolderFile: readFolderFile,
+    placeInboxCard: placeInboxCard, themeWithFade: themeWithFade,
+    inboxInHub: function () { return inboxInHub; }, hubRoomWanted: hubRoomWanted, roomScale: function () { return layout.roomScale || {}; },
+    openHubSpan: function () { return openHubSpan(layout); }, fitLongestWord: fitLongestWord, hubOpen: function () { return hubOpen; }, parseMdToCore: parseMdToCore, slugify: slugify, coreFilename: coreFilename,
     coreStatus: coreStatus, coreProgress: coreProgress, cycleDetailStatus: cycleDetailStatus,
     allTags: allTags, toggleTagFilter: toggleTagFilter, clearTagFilter: clearTagFilter, computeCounts: computeCounts,
     highlightMatch: highlightMatch, setTheme: setTheme, glassFill: glassFill,
