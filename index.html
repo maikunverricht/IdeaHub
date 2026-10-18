@@ -1427,6 +1427,12 @@
   body[data-theme] .ihb-inbox-handle { flex: none; cursor: grab; color: var(--text-3); touch-action: none; user-select: none; font-size: 14px; line-height: 1; padding: 2px; }
   body[data-theme] .ihb-inbox-row.is-match .ihb-inbox-text { color: var(--amber); }
   body[data-theme] .ihb-inboxsheet.is-dragging { opacity: .12; pointer-events: none; transition: opacity .2s; }
+  /* ---- Dialoge am Handy als Blatt (v4.2) ---- */
+  .ihb-dialogcard .ihb-sheet-body { min-height: 0; }
+  .ihb-dialogcard .ihb-display-head { margin-top: 2px; }
+  @media (max-width: 599px) {
+    body[data-theme] .ihb-inboxcard { bottom: var(--kb, 0px); max-height: calc(85% - var(--kb, 0px)); }
+  }
   /* ---- Eingang im Hub (v4.1) ---- */
   .ihb-overlay.ihb-inboxsheet.in-hub { display: none !important; }
   #hubDisplayBody .ihb-inboxcard { position: static; left: auto; top: auto; width: auto; max-width: none; max-height: none;
@@ -1618,7 +1624,7 @@
 
   <div id="captionArea"></div>
 
-  <div class="ihb-version">IdeaHub v4.1</div>
+  <div class="ihb-version">IdeaHub v4.2</div>
 
   <input id="importInput" type="file" accept=".md,text/markdown" multiple style="display:none" />
   <input id="importJsonInput" type="file" accept=".json,application/json" style="display:none" />
@@ -1635,6 +1641,9 @@
     <p class="ihb-note ihb-inbox-notice" id="inboxNotice" role="status"></p>
     <div id="inboxList"></div>
   </div>
+</div>
+<div class="ihb-overlay ihb-inboxsheet ihb-dialogsheet" id="dialogSheet" role="dialog" aria-label="Dialog">
+  <div class="ihb-card ihb-inboxcard ihb-dialogcard" id="dialogCard"></div>
 </div>
 <div class="ihb-overlay" id="settingsModal">
   <div class="ihb-card">
@@ -3876,8 +3885,8 @@
     // Reading and editing both live inside the opened hub. The editor wins if
     // it is open, so a selection change does not throw away what you are typing.
     // ein durch Fokuswechsel geschlossenes Display holt den Dialog zurueck
-    if (sortSession && !hubOpen && state.view !== "tree") renderSortDialog();
-    if (compostSession && !hubOpen && state.view !== "tree") renderCompostDialog();
+    if (sortSession && !hubOpen && !dialogSheetOpen() && state.view !== "tree") renderSortDialog();
+    if (compostSession && !hubOpen && !dialogSheetOpen() && state.view !== "tree") renderCompostDialog();
     if (info && !editorActive) {
       openHubDisplay(
         '<div class="ihb-display-head"><span>' + escapeHtml(info.kind) + "</span>" +
@@ -5857,12 +5866,18 @@
   // In tree view the right pane is the editor's home; on the map it is the
   // opened hub. Same editor, same commit path — only the container differs.
   function editorHost() {
-    return state.view === "tree" && treeDetail ? treeDetail : hubDisplayBody;
+    if (state.view === "tree" && treeDetail) return treeDetail;
+    return dialogSheetOpen() ? dialogCard : hubDisplayBody;   // am Handy: das Blatt
   }
 
   function openHubDisplay(html) {
     var node = typeof html === "string" ? null : html;   // der Eingang kommt als Knoten
     if (state.view === "tree" && treeDetail) { if (!node) treeDetail.innerHTML = html; return; }
+    // ein Dialog (Einsortieren, Kompost, Editor) geht am Handy ins Blatt; die
+    // Beschreibung im Fokus bleibt im Hub, die passt hinein
+    var dialogNow = !!(state.tagEditing || detailEditing || sortSession || compostSession);
+    if (!node && dialogNow && dialogSheetWanted()) { openDialogSheet(html); return; }
+    closeDialogSheet();
     clearTimeout(hubCloseTimer);
     var swap = hubOpen || hubClosing;   // das Hub ist (noch) offen: nur der Inhalt wechselt
     hubClosing = false;
@@ -5901,6 +5916,7 @@
 
   var hubCloseTimer = null;
   function closeHubDisplay() {
+    closeDialogSheet();
     // Repeated calls while already closed must not restart the clearing timer,
     // or the content would linger for another full close cycle each time.
     var wasOpen = hubOpen;
@@ -7398,7 +7414,7 @@
   function startSort(ids) {
     var queue = ids.filter(function (id) { return !!inboxItem(id); });
     if (!queue.length) return;
-    closeInbox();
+    handOffInbox();
     state.tagEditing = null;
     detailEditing = null;
     compostSession = null;
@@ -8164,7 +8180,7 @@
     var queue = (ids || compostCandidates().map(function (c) { return c.id; })).filter(function (id) { return !!coreById(id); });
     if (!queue.length) return;
     if (sortSession) endSort();
-    closeInbox();
+    handOffInbox();
     state.tagEditing = null;
     detailEditing = null;
     compostSession = { queue: queue, done: 0, total: queue.length };
@@ -8619,28 +8635,33 @@
   // midway (nur beim Schliessen) nach gut der Haelfte der Zeit.
   function zoomInbox(opening, done, midway) {
     stopInboxAnims();
-    var r = inboxCard && inboxCard.animate && motionEnabled() ? inboxCard.getBoundingClientRect() : null;
-    if (!r || !r.width) { if (done) done(); return false; }
+    inboxAnims = zoomSheet(inboxCard, inboxSheet, opening, done, midway);
+    return inboxAnims.length > 0;
+  }
+  // ein Blatt (Karte in ihrer Ueberlagerung) aus dem Hub heraus bzw. zurueck
+  function zoomSheet(card, sheet, opening, done, midway) {
+    var r = card && card.animate && motionEnabled() ? card.getBoundingClientRect() : null;
+    if (!r || !r.width) { if (done) done(); return []; }
     var o = inboxOrigin();
     var s = Math.max(0.06, Math.min(0.5, o.size / Math.max(r.width, r.height)));
     var small = "translate(" + Math.round(o.x - (r.left + r.width / 2)) + "px," + Math.round(o.y - (r.top + r.height / 2)) + "px) scale(" + s.toFixed(3) + ")";
-    var radius = getComputedStyle(inboxCard).borderRadius || "20px";
+    var radius = getComputedStyle(card).borderRadius || "20px";
     var dur = Math.round((opening ? 520 : 380) * speedFactor());
     var kf = opening
       ? [{ transform: small, opacity: 0, borderRadius: "999px" }, { opacity: 1, offset: 0.3 }, { transform: "none", opacity: 1, borderRadius: radius }]
       : [{ transform: "none", opacity: 1, borderRadius: radius }, { opacity: 1, offset: 0.55 }, { transform: small, opacity: 0, borderRadius: "999px" }];
-    var a = inboxCard.animate(kf, { duration: dur, easing: opening ? "cubic-bezier(.2,.85,.25,1)" : "cubic-bezier(.55,0,.75,.2)", fill: "forwards" });
-    var veil = getComputedStyle(inboxSheet).backgroundColor;
-    var b = inboxSheet.animate(opening
+    var a = card.animate(kf, { duration: dur, easing: opening ? "cubic-bezier(.2,.85,.25,1)" : "cubic-bezier(.55,0,.75,.2)", fill: "forwards" });
+    var veil = getComputedStyle(sheet).backgroundColor;
+    var b = sheet.animate(opening
       ? [{ backgroundColor: "rgba(0,0,0,0)" }, { backgroundColor: veil }]
       : [{ backgroundColor: veil }, { backgroundColor: "rgba(0,0,0,0)" }], { duration: dur, easing: "ease", fill: "forwards" });
-    inboxAnims = [a, b];
+    var anims = [a, b];
     if (midway) setTimeout(midway, Math.round(dur * 0.45));
     a.onfinish = function () {
-      if (opening) stopInboxAnims();   // danach gelten wieder die normalen Stile
+      if (opening) anims.forEach(function (x) { try { x.cancel(); } catch (e) { /* schon fertig */ } });   // danach gelten wieder die normalen Stile
       if (done) done();
     };
-    return true;
+    return anims;
   }
 
   // Einstellungen: leise auf und zu, ohne Umweg ueber den Hub
@@ -8763,6 +8784,104 @@
     })();
   }
 
+  // ---------- Dialoge am Handy als Blatt (v4.2) ----------
+  var dialogSheet = document.getElementById("dialogSheet");
+  var dialogCard = document.getElementById("dialogCard");
+  var dialogAnims = [];
+  var sheetHandoff = null;   // Masse des Eingangs-Blatts, das gerade uebergibt
+  function dialogSheetWanted() { return !!dialogSheet && state.view !== "tree" && isPhone(); }
+  function dialogSheetOpen() { return !!(dialogSheet && dialogSheet.classList.contains("open")); }
+  function stopDialogAnims() {
+    dialogAnims.forEach(function (a) { try { a.cancel(); } catch (e) { /* schon fertig */ } });
+    dialogAnims = [];
+  }
+  function openDialogSheet(html) {
+    var was = dialogSheetOpen();
+    stopDialogAnims();
+    dialogSheet.classList.remove("closing");
+    dialogSheet.classList.add("open");
+    dialogCard.innerHTML = '<div class="ihb-sheet-body">' + html + "</div>";
+    dialogCard.scrollTop = 0;
+    var body = dialogCard.firstChild;
+    if (was) { fadeIn(body); return; }   // naechster Gedanke: nur der Inhalt wechselt
+    if (sheetHandoff) {
+      // aus dem Eingang: dasselbe Blatt, es passt nur seine Hoehe an
+      var to = dialogCard.getBoundingClientRect();
+      if (motionEnabled() && dialogCard.animate && to.height) {
+        dialogAnims = [dialogCard.animate([{ height: sheetHandoff.height + "px" }, { height: to.height + "px" }],
+          { duration: Math.round(320 * speedFactor()), easing: "cubic-bezier(.2,.85,.25,1)" })];
+        fadeIn(body);
+      }
+      sheetHandoff = null;
+      return;
+    }
+    startPeek();
+    dialogAnims = zoomSheet(dialogCard, dialogSheet, true);
+  }
+  function closeDialogSheet() {
+    if (!dialogSheetOpen()) return;
+    stopDialogAnims();
+    dialogSheet.classList.remove("open");
+    dialogSheet.classList.add("closing");
+    dialogAnims = zoomSheet(dialogCard, dialogSheet, false, function () {
+      if (dialogSheetOpen()) return;
+      dialogSheet.classList.remove("closing");
+      stopDialogAnims();
+      dialogCard.innerHTML = "";
+      endPeek();
+    }, function () { if (!dialogSheetOpen()) endPeek(); });
+  }
+  // Einsortieren oder Kompost beginnt: steht der Eingang am Handy als Blatt da,
+  // geht er ohne Zoom und das Blatt des Dialogs nimmt seinen Platz ein
+  function handOffInbox() {
+    if (dialogSheetWanted() && inboxOpen() && !inboxInHub && inboxCard) {
+      sheetHandoff = inboxCard.getBoundingClientRect();
+      stopInboxAnims();
+      inboxSheet.classList.remove("open", "closing");
+      inboxPicks = [];
+      stopDictation();
+      return;
+    }
+    closeInbox();
+  }
+  // welcher Dialog laeuft, der endet beim Tipp neben das Blatt
+  function closeActiveDialog() {
+    if (sortSession) endSort();
+    else if (compostSession) endCompost();
+    else if (state.tagEditing || detailEditing) closeHubEditor();
+    else closeDialogSheet();
+  }
+  if (dialogSheet) {
+    // nur ein Tipp, der auch auf dem Schleier begann: der Klick, den der Browser
+    // nach dem Antippen eines Punkts nachschickt, landet sonst hier und schloesse gleich wieder
+    var downOnVeil = false;
+    dialogSheet.addEventListener("pointerdown", function (e) { downOnVeil = e.target === dialogSheet; });
+    dialogSheet.addEventListener("click", function (e) {
+      if (e.target === dialogSheet && downOnVeil) closeActiveDialog();
+      downOnVeil = false;
+    });
+    dialogCard.addEventListener("click", function (e) { if (!handleEditorClick(e)) handleSortClick(e); });
+    dialogCard.addEventListener("change", handleSortChange);
+    dialogCard.addEventListener("keydown", handleEditorKeydown);
+  }
+  // Die Tastatur am Handy verkleinert nur den sichtbaren Ausschnitt; das Blatt
+  // soll darueber liegen und nicht dahinter verschwinden.
+  // Nur waehrend getippt wird: sonst koennte ein alter Wert das Blatt anheben.
+  function keyboardInset() {
+    var vv = window.visualViewport, a = document.activeElement;
+    var typing = !!a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA");
+    var kb = vv && typing && vv.scale < 1.01 ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
+    document.documentElement.style.setProperty("--kb", kb + "px");
+    return kb;
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", keyboardInset);
+    window.visualViewport.addEventListener("scroll", keyboardInset);
+  }
+  window.addEventListener("resize", keyboardInset);
+  document.addEventListener("focusin", keyboardInset);
+  document.addEventListener("focusout", function () { setTimeout(keyboardInset, 0); });
+
   // ---------- Aufruf per Link ----------
   // index.html?neu=Text legt den Text in den Eingang (iOS-Kurzbefehl, Lesezeichen,
   // Raycast). Danach wird die Adresse bereinigt, damit Neuladen nichts verdoppelt.
@@ -8854,7 +8973,8 @@
     restoreCompost: restoreCompost, setCompostDays: setCompostDays, stampCoreChanges: stampCoreChanges, openCompost: openCompost,
     folderRows: folderRows, folderFileInfo: function (p) { return folderFiles.get(p) || null; }, readFolderFile: readFolderFile,
     placeInboxCard: placeInboxCard, themeWithFade: themeWithFade,
-    inboxInHub: function () { return inboxInHub; }, hubRoomWanted: hubRoomWanted, roomScale: function () { return layout.roomScale || {}; },
+    inboxInHub: function () { return inboxInHub; }, hubRoomWanted: hubRoomWanted,
+    dialogSheetOpen: dialogSheetOpen, keyboardInset: keyboardInset, roomScale: function () { return layout.roomScale || {}; },
     openHubSpan: function () { return openHubSpan(layout); }, fitLongestWord: fitLongestWord, hubOpen: function () { return hubOpen; }, parseMdToCore: parseMdToCore, slugify: slugify, coreFilename: coreFilename,
     coreStatus: coreStatus, coreProgress: coreProgress, cycleDetailStatus: cycleDetailStatus,
     allTags: allTags, toggleTagFilter: toggleTagFilter, clearTagFilter: clearTagFilter, computeCounts: computeCounts,
