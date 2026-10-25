@@ -69,15 +69,7 @@
     max-width: 980px;
   }
   .ihb-map:after { content: ""; display: block; padding-bottom: 100%; }
-  .ihb-star {
-    position: absolute;
-    border-radius: 999px;
-    background: #eef1ff;
-    opacity: 0.4;
-  }
-  body[data-motion="on"] .ihb-star { animation: ihbTwinkle linear infinite; }
   body[data-motion="on"] .ihb-bob { animation: ihbBob ease-in-out infinite; }
-  @keyframes ihbTwinkle { 0%, 100% { opacity: 0.12; } 50% { opacity: 0.65; } }
   @keyframes ihbBob {
     0%, 100% { transform: translateY(0px); }
     50% { transform: translateY(-3px); }
@@ -661,7 +653,6 @@
   /* ---- Minimal-Theme: ruhig, hell, kontraststark fuer langes Arbeiten ---- */
   body[data-theme="minimal"] .ihb-root { background: #f5f6fb; }
   body[data-theme="minimal"] { background: #f5f6fb; }
-  body[data-theme="minimal"] .ihb-star { display: none; }
   body[data-theme="minimal"] .ihb-label { color: #171a2e; text-shadow: none; }
   body[data-theme="minimal"] .ihb-bubble { border-color: rgba(20,22,45,0.18); }
   body[data-theme="minimal"] .ihb-ghost { border-color: rgba(20,22,45,0.28); color: rgba(20,22,45,0.5); }
@@ -902,8 +893,6 @@
   /* Die Sternenebene braucht eine Flaeche: sobald sie fuer die Parallaxe ein
      transform traegt, wird sie Bezugsrahmen ihrer Sterne. */
   body[data-theme] #starsLayer { position: absolute; inset: 0; pointer-events: none; }
-  body[data-theme] .ihb-star { opacity: .22; }
-  body[data-theme="minimal"] .ihb-star { display: none; }
 
   /* ---- Leiste oben: eine Glasschiene statt vier verstreuter Knoepfe ---- */
   body[data-theme] .ihb-nav {
@@ -1049,10 +1038,10 @@
   }
   body[data-theme] .ihb-detail-mini[data-status="erledigt"] { background: var(--free) !important; border-color: var(--free); }
 
-  /* Fortschritt: die Speiche zeigt ihn immer, der Ring an der Kugel nur,
-     wenn man ihr naeher kommt — dreimal dieselbe Zahl war zu viel. */
+  /* v5.2: Fortschritt steht als Ring an jeder Kugel, immer sichtbar; die
+     Speichen zeigen sich nur bei der gewaehlten Idee und bei Suchtreffern */
   body[data-theme] .ihb-progressring { transition: opacity .3s var(--kurve); }
-  body[data-theme] .ihb-core:not(.is-focused):not(:hover) .ihb-progressring { opacity: 0; }
+  body[data-motion="on"] #linesLayer line[data-line-kind="core"] { transition: opacity calc(.35s * var(--sp)) ease; }
 
   body[data-theme] .ihb-ghost {
     background: transparent; border: 1.5px dashed var(--line-strong); color: var(--text-3);
@@ -1139,6 +1128,19 @@
   body[data-theme="minimal"] .ihb-core.ihb-hit { box-shadow: 0 0 0 2px rgba(224,162,31,.95), 0 0 18px 3px rgba(224,162,31,.30) !important; }
   /* ein ausgeblendeter Name faengt keinen Finger, auch nicht, waehrend er ausblendet */
   .ihb-core > .ihb-name.is-hidden { pointer-events: none; }
+  /* ---- Paket 5 ----
+     Der Verlauf liegt auf <html>, nicht auf <body>: ist die Seite kuerzer als das
+     Fenster (Suche, Blatt), endete er sonst mit einer Kante ueber einer einfarbigen Flaeche. */
+  html { background: linear-gradient(175deg,#070B11 0%,#0A121B 38%,#0C1620 68%,#080C12 100%) fixed, #06090E; }
+  html[data-theme="light"] { background: linear-gradient(175deg,#F5F7FA 0%,#EAEEF4 38%,#E6EBF2 68%,#F2F4F8 100%) fixed, #EEF1F6; }
+  body[data-theme], body[data-theme="minimal"] { background: transparent; }
+  /* im Dunkeln steht der Untertitel der gewaehlten Idee hell auf der Kugel, wie ihr Name */
+  body[data-theme="space"] .ihb-core.ihb-core-open > .ihb-name .ihb-sublabel {
+    color: rgba(237,240,243,.88); text-shadow: 0 0 3px rgba(6,9,14,.9), 0 1px 2px rgba(0,0,0,.6);
+  }
+  /* Suche: der Name unter oder ueber der ganzen Gruppe aus Idee und lesbaren Details */
+  .ihb-core > .ihb-name[data-at="gu"] { top: calc(100% + var(--nd, 5px)); }
+  .ihb-core > .ihb-name[data-at="go"] { top: auto; bottom: calc(100% + var(--nd, 5px)); }
   /* Signale auf den Speichen: unter den Kugeln, ueber den Linien */
   #pulseLayer { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
   .ihb-pulse {
@@ -1398,6 +1400,61 @@
   @media (hover: none) { body.ihb-sheetfocus .ihb-detail > button { display: none; } }
   .ihb-zoomctl { transition: opacity .25s; }
   body.ihb-sheetfocus .ihb-zoomctl { opacity: 0; pointer-events: none; }
+  /* ---- v5.1: Beschreibung mit Platz ---- */
+  #hubDisplayBody .ihb-notesarea, .ihb-dialogcard .ihb-notesarea, #treeDetail .ihb-notesarea { resize: none; }
+  /* im Blatt (Handy, iPad hochkant) 16 px: darunter zoomt Safari beim Antippen hinein */
+  body[data-theme] .ihb-dialogcard .ihb-taginput, body[data-theme] .ihb-dialogcard .ihb-notesarea { font-size: 16px; }
+  .ihb-fieldrow { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-top: calc(10px * var(--dsc, 1)); margin-bottom: 5px; }
+  .ihb-fieldrow .ihb-fieldlabel { margin: 0 0 2px; }
+  body[data-theme] .ihb-notesbig-btn {
+    flex: none; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px;
+    border-radius: 100px; border: 1px solid var(--line-strong); background: transparent; color: var(--text-2); cursor: pointer;
+    font-family: var(--display); font-size: 12px; font-weight: 500; white-space: nowrap;
+    transition: border-color .25s var(--kurve), color .25s var(--kurve);
+  }
+  body[data-theme] .ihb-notesbig-btn:hover { border-color: var(--line-hi); color: var(--text); }
+  @media (hover: none) { body[data-theme] .ihb-notesbig-btn { height: 32px; padding: 0 12px; font-size: 13px; } .ihb-fieldrow { margin-top: calc(8px * var(--dsc, 1)); } }
+  /* schmaler Editor (Glas, Handy): Symbol und Farbe als Zeilen unter den Tags,
+     die Beschreibung bekommt die volle Breite */
+  .ihb-editor-cols.is-narrow { flex-direction: column; align-items: stretch; gap: 0; }
+  .ihb-editor-cols.is-narrow > .ihb-editor-main { order: 0; width: 100%; }
+  .ihb-editor-cols.is-narrow > .ihb-editor-side { order: 1; align-items: flex-start; }
+  .ihb-editor-cols.is-narrow > .ihb-editor-side .ihb-fieldlabel { margin-top: calc(14px * var(--dsc, 1)); }
+  .ihb-editor-cols.is-narrow .ihb-iconpicker, .ihb-editor-cols.is-narrow .ihb-colorpicker { flex-direction: row; flex-wrap: wrap; align-self: stretch; max-height: none; overflow: visible; }
+  @media (hover: none) {
+    /* am Touch-Geraet je eine Zeile zum Wischen: das Blatt bleibt kurz */
+    .ihb-editor-cols.is-narrow .ihb-iconpicker, .ihb-editor-cols.is-narrow .ihb-colorpicker {
+      flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding: 2px 2px 4px; }
+    .ihb-editor-cols.is-narrow .ihb-iconpicker > *, .ihb-editor-cols.is-narrow .ihb-colorpicker > * { flex: none; }
+    .ihb-editor-cols.is-narrow .ihb-colorpicker::-webkit-scrollbar { display: none; }
+  }
+  /* im Blatt bleibt Speichern unten stehen, auch wenn der Editor scrollt */
+  body[data-theme] .ihb-dialogcard .ihb-editor-saverow { position: sticky; bottom: -20px; z-index: 2; margin: 4px -20px -20px; padding: 8px 20px 20px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0), var(--surface-solid) 8px); }
+  /* grosses Schreibfeld: mittig nach Bildschirmgroesse */
+  #notesBig { z-index: 60; }
+  body[data-theme] #notesBig { background: rgba(4,7,11,.40); }
+  body[data-theme="minimal"] #notesBig { background: rgba(30,40,60,.16); }
+  #notesBig.closing { display: flex; pointer-events: none; }
+  body[data-theme] .ihb-notesbig-card {
+    display: flex; flex-direction: column; gap: 12px;
+    width: min(760px, calc(100% - 32px)); max-width: none; height: min(860px, 78%); min-height: 280px; max-height: none;
+    overflow: hidden; padding: 16px 20px 18px;
+  }
+  body[data-theme] .ihb-notesbig-card .ihb-display-head { margin: 0; }
+  body[data-theme] .ihb-notesbig-text { flex: 1 1 auto; min-height: 0; height: auto; resize: none; font-size: 16px; line-height: 1.6; padding: 14px 16px; }
+  .ihb-notesbig-foot { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+  body[data-theme] .ihb-notesbig-foot .ihb-note { margin: 0 auto 0 0; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  body[data-theme] .ihb-notesbig-foot .ihb-btn { min-width: 120px; height: 40px; }
+  @media (hover: none) { body[data-theme] .ihb-notesbig-foot .ihb-note { display: none; } }
+  /* Handy und iPad hochkant: das Blatt in voller Hoehe, ueber der Tastatur */
+  #notesBig.is-sheet.open, #notesBig.is-sheet.closing { display: block; padding: 0; }
+  body[data-theme] #notesBig.is-sheet .ihb-notesbig-card {
+    position: fixed; left: max(0px, calc(50% - 340px)); right: max(0px, calc(50% - 340px));
+    top: calc(var(--vvt, 0px) + max(8px, env(safe-area-inset-top, 0px))); bottom: var(--kb, 0px);
+    width: auto; height: auto; min-height: 0; border-radius: 20px 20px 0 0;
+    padding: 14px max(16px, env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  }
   /* ---- Dialoge am Handy als Blatt (v4.2) ---- */
   .ihb-dialogcard .ihb-sheet-body { min-height: 0; }
   .ihb-dialogcard .ihb-display-head { margin-top: 2px; }
@@ -1661,7 +1718,7 @@
 
   <div id="captionArea"></div>
 
-  <div class="ihb-version">IdeaHub v5.0 · Paket 4</div>
+  <div class="ihb-version">IdeaHub v5.2</div>
 
   <input id="importInput" type="file" accept=".md,text/markdown" multiple style="display:none" />
   <input id="importJsonInput" type="file" accept=".json,application/json" style="display:none" />
@@ -1681,6 +1738,13 @@
 </div>
 <div class="ihb-overlay ihb-inboxsheet ihb-dialogsheet" id="dialogSheet" role="dialog" aria-label="Dialog">
   <div class="ihb-card ihb-inboxcard ihb-dialogcard" id="dialogCard"></div>
+</div>
+<div class="ihb-overlay" id="notesBig" role="dialog" aria-modal="true" aria-labelledby="notesBigTitle">
+  <div class="ihb-card ihb-notesbig-card" id="notesBigCard">
+    <div class="ihb-display-head"><span id="notesBigTitle">Beschreibung</span><button type="button" data-role="notes-big-done" aria-label="Fertig, zurück zum Editor">&#10005;</button></div>
+    <textarea id="notesBigText" class="ihb-notesarea ihb-notesbig-text" placeholder="So ausführlich wie nötig…" aria-labelledby="notesBigTitle"></textarea>
+    <div class="ihb-notesbig-foot"><p class="ihb-note" id="notesBigHint"></p><button type="button" class="ihb-btn primary" data-role="notes-big-done">Fertig</button></div>
+  </div>
 </div>
 <div class="ihb-overlay" id="settingsModal">
   <div class="ihb-card">
@@ -1991,11 +2055,6 @@
     if (!core) return 0;
     return focusP[core.id] || 0;
   }
-  // Gezeichneter Durchmesser einer Kernidee (Tiefe, Fokus, Zuruecktreten)
-  function coreDiameter(core) {
-    var q = core && P2[core.id];
-    return q ? 2 * q.r : layout.core;
-  }
 
   // Details are always on the map, but only readable where they matter:
   // "full" carries text and controls, "mini" is a silent dot that just shows
@@ -2016,13 +2075,6 @@
   function detailSlotsFor(core) {
     var ghost = state.focusedId === core.id && core.details.length < MAX_DETAILS ? 1 : 0;
     return core.details.length + ghost;
-  }
-  // Gezeichnete Groesse eines Details dieser Idee (das erste steht fuer alle)
-  function detailSizeFor(core) {
-    var q = null;
-    for (var i = 0; i < core.details.length && !q; i++) q = P2["d:" + core.details[i].id];
-    if (q) return { w: 2 * q.r, h: 2 * q.r };
-    return detailModeFor(core) === "full" ? { w: layout.focusW, h: layout.focusH } : { w: layout.miniW, h: layout.miniH };
   }
 
   // Two core ideas are linked when they share at least one tag. This is what
@@ -2099,17 +2151,6 @@
     return worst;
   }
 
-  // How far the outermost bubble still is from the (square) map edge.
-  // Negative means it is hanging outside and would be unreachable.
-  function edgeMargin(list) {
-    var W = layout.width, e = BASE.edge * layout.s, worst = Infinity;
-    for (var i = 0; i < list.length; i++) {
-      var p = list[i];
-      var m = Math.min(p.x - p.r, W - p.x - p.r, p.y - p.r, W - p.y - p.r) - e;
-      if (m < worst) worst = m;
-    }
-    return worst === Infinity ? 0 : worst;
-  }
 
   var GHOST_ID = "__ghost";
   // Das Glas bemisst sich wie in v4.4 an einer Kugel von 226 px (bei 720 px Karte):
@@ -2164,18 +2205,19 @@
     flag:    '<path d="M5 21V4"/><path d="M5 5h11l-2 3 2 3H5z"/>'
   };
   var ICON_KEYS = ["none", "idea", "brain", "book", "task", "chart", "team", "rocket", "globe", "flag"];
-  // Thin arc along the sphere's edge showing how many details are done. Drawn
-  // in its own coordinates, so it follows the sphere at every size.
+  // Arc along the sphere's edge showing how many details are done. Drawn in
+  // its own coordinates, so it follows the sphere at every size. v5.2: it is
+  // the only progress mark on the map, so it is a little bolder than before.
   function progressRingSvg(progress) {
     if (!progress || !progress.total) return "";
     var r = 46, c = 2 * Math.PI * r;
     var done = Math.max(0, Math.min(1, progress.done / progress.total));
     var full = done >= 1;
     return '<svg class="ihb-progressring" viewBox="0 0 100 100" aria-hidden="true">' +
-      '<circle cx="50" cy="50" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="4"/>' +
+      '<circle cx="50" cy="50" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="6"/>' +
       (done > 0
-        ? '<circle cx="50" cy="50" r="' + r + '" fill="none" stroke="' + (full ? (state.theme === "minimal" ? "#17806D" : "#63D9C4") : (state.theme === "minimal" ? "rgba(17,25,35,0.55)" : "rgba(237,240,243,0.85)")) + '" ' +
-          'stroke-width="4" stroke-linecap="round" stroke-dasharray="' + (c * done) + ' ' + c + '" ' +
+        ? '<circle cx="50" cy="50" r="' + r + '" fill="none" stroke="' + (full ? (state.theme === "minimal" ? "#17806D" : "#63D9C4") : (state.theme === "minimal" ? "rgba(17,25,35,0.68)" : "rgba(237,240,243,0.9)")) + '" ' +
+          'stroke-width="6" stroke-linecap="round" stroke-dasharray="' + (c * done) + ' ' + c + '" ' +
           'transform="rotate(-90 50 50)"/>'
         : "") +
       "</svg>";
@@ -3091,23 +3133,12 @@
   function writeLines() {
     var Ln = dom.lines;
     if (!Ln) return;
-    var L = layout, c = L.width / 2, hubR = L.hub / 2;
+    var L = layout;
     visibleCores().forEach(function (core) {
       var q = P2[core.id];
       if (!q) return;
       var fo = q.fog.toFixed(2);
       if (Ln.core[core.id]) setLine(Ln.core[core.id], 50, 50, pctW(q.x), pctW(q.y), fo);
-      var prog = Ln.prog[core.id];
-      if (prog) {
-        // the spoke doubles as the progress bar: it fills from the hub's rim outwards
-        var pg = coreProgress(core), frac = pg.total ? pg.done / pg.total : 0;
-        var dx = q.x - c, dy = q.y - c, dl = Math.sqrt(dx * dx + dy * dy);
-        if (dl <= hubR + 0.5) setLine(prog, 50, 50, 50, 50, "0");
-        else {
-          var sx = c + dx / dl * hubR, sy = c + dy / dl * hubR;
-          setLine(prog, pctW(sx), pctW(sy), pctW(sx + (q.x - sx) * frac), pctW(sy + (q.y - sy) * frac), fo);
-        }
-      }
       core.details.forEach(function (d) {
         var ln = Ln.det[d.id], dq = P2["d:" + d.id];
         if (ln && dq) setLine(ln, pctW(q.x), pctW(q.y), pctW(dq.x), pctW(dq.y), Math.min(q.fog, dq.fog).toFixed(2));
@@ -3129,8 +3160,10 @@
   // steht, bleibt an seinem Platz, bis es dort wirklich eng wird: so flackert
   // beim Drehen nichts. Suchtreffer und die Idee unter dem Zeiger stehen immer da.
   var NAME_AT = ["u", "o", "r", "l"];
-  function nameRect(at, q, w, h, sc) {
+  function nameRect(at, q, w, h, sc, ext) {
     var g = 5 * sc;
+    if (at === "gu") return { x: q.x - w / 2, y: q.y + (ext ? ext.b : q.r) + g, w: w, h: h };
+    if (at === "go") return { x: q.x - w / 2, y: q.y - (ext ? ext.a : q.r) - g - h, w: w, h: h };
     if (at === "o") return { x: q.x - w / 2, y: q.y - q.r - g - h, w: w, h: h };
     if (at === "r") return { x: q.x + q.r + g, y: q.y - h / 2, w: w, h: h };
     if (at === "l") return { x: q.x - q.r - g - w, y: q.y - h / 2, w: w, h: h };
@@ -3152,6 +3185,18 @@
   var zoomBox;   // undefined: noch nicht vermessen
   function refreshZoomBox() {
     zoomBox = zoomCtl && zoomCtl.offsetWidth ? { x: zoomCtl.offsetLeft - 4, y: zoomCtl.offsetTop - 4, w: zoomCtl.offsetWidth + 8, h: zoomCtl.offsetHeight + 8 } : null;
+  }
+  // wie weit die lesbaren Details einer Idee unter und ueber ihre Mitte reichen (Suche)
+  function clusterExt(core, q) {
+    var b = q.r, a = q.r, any = false;
+    core.details.forEach(function (d) {
+      var dq = P2["d:" + d.id];
+      if (!dq || !dq.full || dq.fp > 0) return;
+      any = true;
+      b = Math.max(b, dq.y + dq.r - q.y);
+      a = Math.max(a, q.y - dq.y + dq.r);
+    });
+    return any && (b > q.r + 1 || a > q.r + 1) ? { b: b, a: a } : null;
   }
   function placeLabels() {
     var L = layout, c = L.width / 2, placed = [], amt = 0;
@@ -3187,7 +3232,7 @@
       var el = dom.cores[core.id];
       if (!el || !el._name) return;
       var info = ev ? ev.perCore.get(core.id) : null;
-      list.push({ id: core.id, q: q, el: el, forced: core.id === hoverId || !!(info && info.coreActive) });
+      list.push({ id: core.id, q: q, el: el, forced: core.id === hoverId || !!(info && info.coreActive), ext: clusterExt(core, q) });
     });
     var gq = P2[GHOST_ID];
     if (gq && dom.ghostCore) spheres.push({ cx: gq.x, cy: gq.y, cr: gq.r, z: gq.z });
@@ -3210,20 +3255,22 @@
       // vor dem Hub und, im Fokus, zu klein zurueckgetreten: kein Name
       // im Fokus tragen nur die verbundenen Ideen ihren Namen (und die unter dem Zeiger)
       var allowed = it.el._vor !== 0.4 && !(amt > 0.5 && (2 * it.q.r < 30 || (!it.el._linked && !it.forced)));
-      var cur = nm._at || "u", was = !labelsFresh && nm._shown === true;
+      var AT = it.ext ? NAME_AT.concat(["gu", "go"]) : NAME_AT;
+      var cur = AT.indexOf(nm._at) !== -1 ? nm._at : "u", was = !labelsFresh && nm._shown === true;
       var at = null, rect = null;
       if (allowed && w <= 0) at = cur;   // noch nicht vermessen: an seinem Platz lassen
       else if (allowed) {
         // ein Name hinter einer Kugel, die weiter vorn liegt, waere verdeckt
         var front = spheres.filter(function (s) { return s.owner !== it.id && s.z > it.q.z; });
         var own = spheres.filter(function (s) { return s.owner === it.id && s.dot; });
-        var order = was ? [cur].concat(NAME_AT.filter(function (a) { return a !== cur; })) : NAME_AT;
+        var order = was ? [cur].concat(AT.filter(function (a) { return a !== cur; })) : AT;
         // erst ein Platz, an dem auch die eigenen Punkte frei bleiben, sonst einer ueber ihnen
-        var passes = own.length ? [front.concat(own), front] : [front];
-        if (it.forced) passes.push(spheres.filter(function (s) { return s.full; }));
+        var fulls = spheres.filter(function (s) { return s.full; });
+        var passes = own.length ? [front.concat(own, fulls), front.concat(fulls)] : [front.concat(fulls)];
+        if (it.forced) passes.push(fulls);
         for (var ps = 0; ps < passes.length && !at; ps++) {
           for (var i = 0; i < order.length && !at; i++) {
-            var r = nameRect(order[i], it.q, w, h, sc);
+            var r = nameRect(order[i], it.q, w, h, sc, it.ext);
             // ueber den Kartenrand hinaus waere der Name abgeschnitten
             if (r.x < -2 || r.x + r.w > L.width + 2 || r.y < -2 || r.y + r.h > L.width + 2) continue;
             // wer schon steht, bleibt, solange ein Pixel Luft ist; ein neuer Platz braucht mehr
@@ -3231,13 +3278,36 @@
             if (!rectHits(test, placed) && !rectHits(test, passes[ps])) { at = order[i]; rect = r; }
           }
         }
-        if (!at && it.id === hoverId) { at = cur; rect = nameRect(cur, it.q, w, h, sc); }
+        if (!at && it.forced) {
+          // zuletzt der Platz, an dem der Name eines Treffers am wenigsten auf lesbaren
+          // Details liegt (nie auf einem Namen, dem Balken oder vor ihm liegenden Kugeln)
+          var best = Infinity;
+          AT.forEach(function (a) {
+            var r = nameRect(a, it.q, w, h, sc, it.ext);
+            if (r.x < -2 || r.x + r.w > L.width + 2 || r.y < -2 || r.y + r.h > L.width + 2) return;
+            var test = growRect(r, 2);
+            if (rectHits(test, placed) || rectHits(test, front)) return;
+            var cost = 0;
+            fulls.forEach(function (f) {
+              cost += Math.max(0, Math.min(r.x + r.w, f.cx + f.cr) - Math.max(r.x, f.cx - f.cr)) *
+                Math.max(0, Math.min(r.y + r.h, f.cy + f.cr) - Math.max(r.y, f.cy - f.cr));
+            });
+            if (cost < best) { best = cost; at = a; rect = r; }
+          });
+        }
+        if (!at && it.id === hoverId) { at = cur; rect = nameRect(cur, it.q, w, h, sc, it.ext); }
       }
       var show = at !== null;
       if (rect) placed.push(rect);
       if (show && nm._at !== at) {
         nm._at = at;
         if (at === "u") nm.removeAttribute("data-at"); else nm.setAttribute("data-at", at);
+      }
+      if (show && (at === "gu" || at === "go")) {
+        // Abstand vom Rand der Kugel bis unter bzw. ueber die Gruppe, in Kugel-Pixeln
+        var ex = it.ext || { a: it.q.r, b: it.q.r };
+        var nds = (((at === "gu" ? ex.b : ex.a) - it.q.r) / sc + 5).toFixed(1) + "px";
+        if (nm._nd !== nds) { nm._nd = nds; nm.style.setProperty("--nd", nds); }
       }
       if (nm._shown !== show) { nm._shown = show; nm.classList.toggle("is-hidden", !show); }
     });
@@ -3743,6 +3813,10 @@
     if (opening) energyFromCore(id);
   }
   function clearFocus() {
+    // ein Wechsel, der gerade das Glas um die alte Idee schliesst, darf danach nicht
+    // doch noch die neue fokussieren (Escape oder die Pille kurz nach dem Antippen)
+    clearTimeout(displaySwapTimer);
+    selectDetailSwapping = false;
     state.focusedId = null;
     state.selectedDetail = null;
     applyFocusChange();
@@ -3854,13 +3928,10 @@
         if (sel2 && sel2.detailId === d.id) dEl2.classList.add("is-focused");
         else dEl2.classList.remove("is-focused");
       });
+      // v5.2: die Speiche nur bei der gewaehlten Idee und bei Treffern; sonst sagt
+      // sie nichts (jede Idee haengt am Hub) und verdeckt die Querverbindungen
       var coreLine = linesLayer.querySelector('line[data-line-core="' + core.id + '"][data-line-kind="core"]');
-      if (coreLine) coreLine.setAttribute("opacity", info.coreActive ? "0.45" : info.linked ? "0.28" : "0.08");
-      var progLine = linesLayer.querySelector('line[data-line-progress="' + core.id + '"]');
-      if (progLine) {
-        var full = coreProgress(core).done === coreProgress(core).total;
-        progLine.setAttribute("opacity", info.coreActive ? (full ? "0.95" : "0.8") : info.linked ? "0.45" : "0.1");
-      }
+      if (coreLine) coreLine.setAttribute("opacity", info.isFocused || isHit ? "0.45" : "0");
       core.details.forEach(function (d) {
         var dActive = info.details.get(d.id);
         var dEl = bubblesLayer.querySelector('[data-role="detail"][data-detail-id="' + d.id + '"]');
@@ -4138,9 +4209,16 @@
       var shownIn = sheetMode() ? "unten im Blatt" : "im Hub";
       var mapHelp = '<b>Antippen</b> holt eine Idee nach vorn und zeigt sie ' + shownIn + ' · ';
       var editHelp = '<b>Stift bzw. Tag-Symbol</b> ' + (sheetMode() ? 'öffnet das Bearbeitungsfeld' : 'klappt das Bearbeitungsfeld am Hub auf') + ' · ';
-      var moveHelp = '<b>Ziehen</b> dreht das Gehirn, die <b>Pfeiltasten</b> auch · <b>Details ziehen</b> hängt sie an eine andere Kernidee · ' +
-        '<b>Mausrad</b>, <b>zwei Finger</b> oder <b>+ −</b> zoomen · ';
-      captionArea.innerHTML = storageWarnHtml("ihb-caption") + overflowNote + compostNoteHtml("ihb-caption") + '<p class="ihb-caption">' + mapHelp + editHelp + moveHelp + '<b>/</b> springt ins Hub-Feld, <b>Enter</b> legt dort an, eine eingefügte Liste wird als Gliederung gelesen · <b>N</b> öffnet den Eingang für schnelle Gedanken – tippen oder diktieren, markieren und bündeln; seine Punkte oben links lassen sich antippen oder auf eine Kernidee ziehen.</p>';
+      // am Touch-Geraet nur, was dort geht: keine Tasten, kein Mausrad
+      var touch = !!(window.matchMedia && window.matchMedia("(hover: none)").matches);
+      var moveHelp = touch
+        ? '<b>Ziehen</b> dreht das Gehirn · <b>Details ziehen</b> hängt sie an eine andere Kernidee · <b>Zwei Finger</b> oder <b>+ −</b> zoomen · '
+        : '<b>Ziehen</b> dreht das Gehirn, die <b>Pfeiltasten</b> auch · <b>Details ziehen</b> hängt sie an eine andere Kernidee · ' +
+          '<b>Mausrad</b>, <b>zwei Finger</b> oder <b>+ −</b> zoomen · ';
+      var hubHelp = touch
+        ? 'Im <b>Hub-Feld</b> suchen, <b>Enter</b> legt an, eine eingefügte Liste wird als Gliederung gelesen · der <b>Eingang</b> nimmt schnelle Gedanken auf'
+        : '<b>/</b> springt ins Hub-Feld, <b>Enter</b> legt dort an, eine eingefügte Liste wird als Gliederung gelesen · <b>N</b> öffnet den Eingang für schnelle Gedanken';
+      captionArea.innerHTML = storageWarnHtml("ihb-caption") + overflowNote + compostNoteHtml("ihb-caption") + '<p class="ihb-caption">' + mapHelp + editHelp + moveHelp + hubHelp + ' – tippen oder diktieren, markieren und bündeln; seine Punkte oben links lassen sich antippen oder auf eine Kernidee ziehen.</p>';
     }
   }
 
@@ -4201,17 +4279,9 @@
       var progress = coreProgress(core);
       var titleAttr = escapeHtml(core.text) + (progress.total ? " (" + progress.done + "/" + progress.total + " erledigt)" : "");
 
-      linesHtml += '<line data-line-core="' + core.id + '" data-line-kind="core" x1="50" y1="50" x2="50" y2="50" stroke="' + palette.core + '" stroke-width="0.35" opacity="0.45" />';
-      // The spoke doubles as the progress bar: it fills from the hub outwards as
-      // the idea's details get done, so progress is legible across the whole map.
-      if (progress.total && progress.done > 0) {
-        var full = progress.done >= progress.total;
-        linesHtml += '<line data-line-core="' + core.id + '" data-line-progress="' + core.id + '" ' +
-          'x1="50" y1="50" x2="50" y2="50" ' +
-          'stroke="' + (full ? (state.theme === "minimal" ? "#2FA894" : "#63D9C4") : (state.theme === "minimal" ? "#C98A12" : "#F2B33D")) + '" stroke-width="' + (full ? 1.15 : 0.95) + '" ' +
-          'stroke-linecap="round" opacity="' + (full ? 0.95 : 0.8) + '">' +
-          "<title>" + progress.done + " von " + progress.total + " erledigt</title></line>";
-      }
+      // v5.2: die Speiche zeigt sich nur bei der gewaehlten Idee und bei Treffern
+      // (applyFilter); den Fortschritt traegt der Ring an der Kugel
+      linesHtml += '<line data-line-core="' + core.id + '" data-line-kind="core" x1="50" y1="50" x2="50" y2="50" stroke="' + palette.core + '" stroke-width="0.35" opacity="0" />';
 
       bubblesHtml += '' +
         '<div class="ihb-bubble ihb-core' + (open ? " ihb-core-open" : "") + '" role="button" tabindex="0" data-role="core" data-core-id="' + core.id + '" ' +
@@ -4270,7 +4340,7 @@
   }
 
   function cacheDom() {
-    dom = { cores: {}, details: {}, ghostDetails: {}, ghostCore: null, lines: { core: {}, prog: {}, det: {}, links: [] } };
+    dom = { cores: {}, details: {}, ghostDetails: {}, ghostCore: null, lines: { core: {}, det: {}, links: [] } };
     eachEl(bubblesLayer.querySelectorAll(".ihb-bubble"), function (el) {
       el._base = parseFloat(el.style.width) || 1;
       var role = el.getAttribute("data-role");
@@ -4281,7 +4351,6 @@
     });
     eachEl(linesLayer.querySelectorAll("line"), function (ln) {
       if (ln.getAttribute("data-line-kind") === "core") dom.lines.core[ln.getAttribute("data-line-core")] = ln;
-      else if (ln.getAttribute("data-line-progress")) dom.lines.prog[ln.getAttribute("data-line-progress")] = ln;
       else if (ln.getAttribute("data-line-detail")) dom.lines.det[ln.getAttribute("data-line-detail")] = ln;
     });
     eachEl(linesLayer.querySelectorAll(".ihb-crosslink"), function (p) {
@@ -5519,7 +5588,7 @@
       '<div class="ihb-editor-main">' +
       '<label class="ihb-fieldlabel" for="edSubtitle">Untertitel</label>' +
       '<input id="edSubtitle" class="ihb-taginput" placeholder="Kurze Ergänzung zum Titel" value="' + escapeHtml(core.subtitle || "") + '" />' +
-      '<label class="ihb-fieldlabel" for="edNotes">Beschreibung</label>' +
+      notesLabelRow() +
       '<textarea id="edNotes" class="ihb-notesarea" placeholder="So ausführlich wie nötig…">' + escapeHtml(core.notes || "") + '</textarea>' +
       '<label class="ihb-fieldlabel" for="edTags">Tags</label>' +
       '<input id="edTags" class="ihb-taginput" placeholder="tag1, tag2" value="' + escapeHtml((core.tags || []).join(", ")) + '" />' +
@@ -5536,7 +5605,7 @@
       '<label class="ihb-fieldlabel">Status</label><div class="ihb-themerow" id="edStatus"></div>' +
       '<div class="ihb-editor-cols">' +
       '<div class="ihb-editor-main">' +
-      '<label class="ihb-fieldlabel" for="edNotes">Beschreibung</label>' +
+      notesLabelRow() +
       '<textarea id="edNotes" class="ihb-notesarea" placeholder="So ausführlich wie nötig…">' + escapeHtml(d.notes || "") + '</textarea>' +
       '<label class="ihb-fieldlabel" for="edTags">Tags</label>' +
       '<input id="edTags" class="ihb-taginput" placeholder="tag1, tag2" value="' + escapeHtml((d.tags || []).join(", ")) + '" />' +
@@ -5555,7 +5624,9 @@
       html += '<button type="button" class="ihb-iconopt' + (key === draftIcon ? " active" : "") +
         '" data-role="icon-opt" data-icon="' + key + '" aria-label="' + key + '">' + inner + "</button>";
     });
+    var keepX = host.scrollLeft;
     host.innerHTML = html;
+    host.scrollLeft = keepX;   // v5.1: die gewischte Zeile springt nicht zurueck
   }
 
   function renderColorPicker() {
@@ -5569,7 +5640,9 @@
         '" data-role="color-opt" data-color="' + c.key + '" title="' + escapeHtml(c.label) + '" aria-label="' + escapeHtml(c.label) + '"' +
         (isAuto ? "" : ' style="background:' + c.hex + '"') + ">" + (isAuto ? "A" : "") + "</button>";
     }
+    var keepX = host.scrollLeft;
     host.innerHTML = html;
+    host.scrollLeft = keepX;
   }
 
   function renderDetailStatusRow() {
@@ -5737,6 +5810,10 @@
       hubDisplayBody.style.maxWidth = "480px";
       hubDisplayBody.style.width = bodyW + "px";
       hubDisplayBody.style.marginLeft = (-bodyW / 2) + "px";
+      // v5.1: so viel Hoehe hat der Inhalt hoechstens; danach richtet sich die
+      // Beschreibung im Editor, und schmal ruecken Symbol und Farbe nach unten
+      hubBodyRoom = (horizontal ? d + over : gap) - 2 * Math.round(Math.max(10, finalW * 0.045));
+      fitEditorIn(hubDisplayBody);
       hubDisplayBody.style.height = "auto";
       var need = hubDisplayBody.offsetHeight;   // 0, wo nichts gemessen werden kann
       hubDisplayBody.style.height = "";
@@ -5898,10 +5975,11 @@
       '<div class="ihb-display-head"><span>Kernidee: ' + escapeHtml(core.text || "Ohne Titel") + "</span>" +
       '<button type="button" data-role="display-close" aria-label="Schließen">&#10005;</button></div>' +
       editorFieldsForCore(core) +
-      '<div class="ihb-btnrow"><button type="button" class="ihb-btn primary" data-role="editor-save">Speichern</button></div>');
+      '<div class="ihb-btnrow ihb-editor-saverow"><button type="button" class="ihb-btn primary" data-role="editor-save">Speichern</button></div>');
     renderIconPicker();
     renderColorPicker();
     renderTagSuggestions();
+    fitEditor();
     var f = document.getElementById("edSubtitle");
     if (f) { f.focus(); f.select(); }
   }
@@ -5922,10 +6000,11 @@
       '<div class="ihb-display-head"><span>Detailidee</span>' +
       '<button type="button" data-role="display-close" aria-label="Schließen">&#10005;</button></div>' +
       editorFieldsForDetail(d) +
-      '<div class="ihb-btnrow"><button type="button" class="ihb-btn primary" data-role="editor-save">Speichern</button></div>');
+      '<div class="ihb-btnrow ihb-editor-saverow"><button type="button" class="ihb-btn primary" data-role="editor-save">Speichern</button></div>');
     renderDetailStatusRow();
     renderColorPicker();
     renderTagSuggestions();
+    fitEditor();
     var t = document.getElementById("edTitle");
     if (t) { t.focus(); t.select(); }
   }
@@ -7106,6 +7185,7 @@
     else if (role === "color-opt") { draftColor = t.getAttribute("data-color"); renderColorPicker(); }
     else if (role === "detail-status") { detailDraftStatus = t.getAttribute("data-status"); renderDetailStatusRow(); }
     else if (role === "tag-suggest") { addTagFromSuggestion(t.getAttribute("data-tag")); }
+    else if (role === "notes-big") openNotesBig();
     else return false;
     return true;
   }
@@ -8790,6 +8870,9 @@
     var typing = !!a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA");
     var kb = vv && typing && vv.scale < 1.01 ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
     document.documentElement.style.setProperty("--kb", kb + "px");
+    // ist der Ausschnitt nach unten gerutscht, beginnt das grosse Schreibfeld darunter
+    var vt = kb && vv ? Math.max(0, Math.round(vv.offsetTop)) : 0;
+    document.documentElement.style.setProperty("--vvt", vt + "px");
     return kb;
   }
   if (window.visualViewport) {
@@ -8799,6 +8882,179 @@
   window.addEventListener("resize", keyboardInset);
   document.addEventListener("focusin", keyboardInset);
   document.addEventListener("focusout", function () { setTimeout(keyboardInset, 0); });
+
+  // ---------- v5.1: Beschreibung mit Platz ----------
+  // Das Feld waechst mit dem Text (mindestens fuenf Zeilen), bis es den sichtbaren
+  // Teil seines Rahmens fuellt; danach scrollt es in sich. Im schmalen Editor
+  // (Glas, Handy) ruecken Symbol und Farbe unter die Tags. Fuer laengere Texte
+  // oeffnet "Grosses Feld" eine Schreibflaeche nach Bildschirmgroesse.
+  var NOTES_MIN_LINES = 5;
+  var NOTES_LABEL_ROOM = 36;   // Beschriftung mit Knopf ueber dem Feld
+  var EDITOR_NARROW = 440;     // darunter stehen Symbol und Farbe als Zeilen
+  var hubBodyRoom = 0;         // so hoch darf der Inhalt im Glas hoechstens werden (px)
+  function notesLabelRow() {
+    return '<div class="ihb-fieldrow"><label class="ihb-fieldlabel" for="edNotes">Beschreibung</label>' +
+      '<button type="button" class="ihb-notesbig-btn" data-role="notes-big" aria-label="Beschreibung im großen Feld schreiben" title="Im großen Feld schreiben">' +
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg><span>Großes Feld</span></button></div>';
+  }
+  function notesHost(ta) { return ta && ta.closest ? ta.closest("#hubDisplayBody, #dialogCard, #treeDetail") : null; }
+  // so hoch darf das Feld werden, damit es ganz im sichtbaren Teil seines Rahmens steht
+  function notesCap(ta) {
+    var host = notesHost(ta);
+    if (host && host === hubDisplayBody && hubBodyRoom > 0) return hubBodyRoom - NOTES_LABEL_ROOM;
+    var kb = parseFloat(document.documentElement.style.getPropertyValue("--kb")) || 0;
+    return ((window.innerHeight || 800) - kb) * 0.45;
+  }
+  function fitNotes(ta) {
+    if (!ta || !ta.clientWidth) return false;   // nicht gezeichnet (verborgen, Testumgebung)
+    var cs = getComputedStyle(ta);
+    var fs = parseFloat(cs.fontSize) || 13;
+    var lh = parseFloat(cs.lineHeight) || fs * 1.5;
+    var padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    var bord = (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
+    var minH = Math.ceil(NOTES_MIN_LINES * lh + padY + bord);
+    var cap = Math.max(minH, Math.floor(notesCap(ta)));
+    var key = ta.clientWidth + "|" + cap + "|" + lh + "|" + ta.value;
+    if (ta._ihbFit === key) return false;   // nichts Neues: nicht messen
+    ta._ihbFit = key;
+    var host = notesHost(ta), keep = host ? host.scrollTop : 0;
+    var before = ta.style.height;
+    ta.style.height = "auto";
+    var want = ta.scrollHeight + bord;
+    ta.style.height = Math.min(Math.max(want, minH), cap) + "px";
+    ta.style.overflowY = want > cap + 1 ? "auto" : "hidden";
+    if (host) host.scrollTop = keep;   // kurz "auto" darf den Rahmen nicht verschieben
+    return ta.style.height !== before;
+  }
+  function fitEditorIn(host) {
+    if (!host || !host.querySelector) return false;
+    var cols = host.querySelector(".ihb-editor-cols");
+    if (cols && host.clientWidth) {
+      var hcs = getComputedStyle(host);
+      var inner = host.clientWidth - (parseFloat(hcs.paddingLeft) || 0) - (parseFloat(hcs.paddingRight) || 0);
+      var narrow = inner < EDITOR_NARROW;
+      if (cols.classList.contains("is-narrow") !== narrow) {
+        cols.classList.toggle("is-narrow", narrow);
+        if (narrow) eachEl(cols.querySelectorAll(".ihb-iconpicker, .ihb-colorpicker"), revealActive);
+      }
+    }
+    return fitNotes(host.querySelector("#edNotes"));
+  }
+  // in einer Wischzeile die gewaehlte Option ins Bild holen
+  function revealActive(row) {
+    var a = row && row.querySelector(".active");
+    if (!a || row.scrollWidth <= row.clientWidth + 1) return;
+    var rr = row.getBoundingClientRect(), ar = a.getBoundingClientRect();
+    if (ar.left < rr.left || ar.right > rr.right) row.scrollLeft += (ar.left + ar.width / 2) - (rr.left + rr.width / 2);
+  }
+  function fitEditor() {
+    if (!(state.tagEditing || detailEditing)) return;
+    var host = editorHost();
+    if (host === hubDisplayBody) { if (hubOpen) layoutHub(); return; }   // das Glas passt in layoutHub ein
+    fitEditorIn(host);
+  }
+  document.addEventListener("input", function (e) {
+    var t = e.target;
+    if (!t || t.id !== "edNotes") return;
+    if (fitNotes(t) && hubOpen && notesHost(t) === hubDisplayBody) layoutHub();   // das Glas waechst mit
+  });
+
+  // ---- grosses Schreibfeld ----
+  var notesBigEl = document.getElementById("notesBig");
+  var notesBigCard = document.getElementById("notesBigCard");
+  var notesBigText = document.getElementById("notesBigText");
+  var notesBigTitle = document.getElementById("notesBigTitle");
+  var notesBigHint = document.getElementById("notesBigHint");
+  function notesBigOpen() { return !!(notesBigEl && notesBigEl.classList.contains("open")); }
+  function notesBigSheet() { return isPhone() || sheetMode(); }
+  function notesTouch() {
+    try { return !!(window.matchMedia && window.matchMedia("(hover: none)").matches); } catch (e) { return false; }
+  }
+  function editorNotesField() {
+    var host = editorHost();
+    return (host && host.querySelector("#edNotes")) || document.getElementById("edNotes");
+  }
+  function editorTitleNow() {
+    if (detailEditing) {
+      var typed = val("edTitle").trim();
+      if (typed) return typed;
+      var c = coreById(detailEditing.coreId), d = null;
+      if (c) c.details.forEach(function (x) { if (x.id === detailEditing.detailId) d = x; });
+      return d ? d.text : "";
+    }
+    var core = state.tagEditing ? coreById(state.tagEditing) : null;
+    return core ? core.text : "";
+  }
+  function openNotesBig() {
+    var srcField = editorNotesField();
+    if (!srcField || !notesBigEl || notesBigOpen()) return;
+    var title = editorTitleNow();
+    notesBigTitle.textContent = "Beschreibung" + (title ? " · " + title : "");
+    var mac = /Mac|iPhone|iPad/.test(navigator.platform || "");
+    notesBigHint.textContent = "Esc oder " + (mac ? "⌘" : "Strg") + " + Enter: zurück zum Editor · gespeichert wird dort";
+    notesBigText.value = srcField.value;
+    notesBigEl.classList.remove("closing");
+    notesBigEl.classList.toggle("is-sheet", notesBigSheet());
+    notesBigEl.classList.add("open");
+    softCard(notesBigEl, true);
+    var end = notesBigText.value.length;
+    try { notesBigText.focus({ preventScroll: true }); } catch (e) { notesBigText.focus(); }
+    try { notesBigText.setSelectionRange(end, end); } catch (e) { /* aeltere Browser */ }
+    notesBigText.scrollTop = notesBigText.scrollHeight;
+  }
+  // Fertig, Escape, Strg/Cmd + Enter und ein Tipp daneben: der Text geht zurueck in
+  // den Editor. Verworfen wird hier nie; gespeichert wird im Editor.
+  function closeNotesBig() {
+    if (!notesBigOpen()) return;
+    var dstField = editorNotesField();
+    if (dstField) {
+      dstField.value = notesBigText.value;
+      if (fitNotes(dstField) && hubOpen && notesHost(dstField) === hubDisplayBody) layoutHub();
+    }
+    notesBigEl.classList.remove("open");
+    notesBigEl.classList.add("closing");
+    softCard(notesBigEl, false, function () { if (!notesBigOpen()) notesBigEl.classList.remove("closing"); });
+    if (!dstField) return;
+    // am Rechner weiterschreiben; am Handy nicht gleich wieder die Tastatur aufklappen
+    var host = notesHost(dstField);
+    var back = notesTouch() ? (host && host.querySelector('[data-role="notes-big"]')) : dstField;
+    if (!back) return;
+    try { back.focus({ preventScroll: true }); } catch (e) { back.focus(); }
+    if (back === dstField) { try { dstField.setSelectionRange(dstField.value.length, dstField.value.length); } catch (e) { /* aeltere Browser */ } }
+  }
+  if (notesBigEl) {
+    var notesDownOnVeil = false;
+    notesBigEl.addEventListener("pointerdown", function (e) { notesDownOnVeil = e.target === notesBigEl; });
+    notesBigEl.addEventListener("click", function (e) {
+      if (e.target === notesBigEl) { if (notesDownOnVeil) closeNotesBig(); notesDownOnVeil = false; return; }
+      if (e.target.closest && e.target.closest('[data-role="notes-big-done"]')) closeNotesBig();
+    });
+  }
+  // vor allen anderen Tasten: Escape schliesst hier nur die Schreibflaeche, nicht den Editor
+  document.addEventListener("keydown", function (e) {
+    if (!notesBigOpen()) return;
+    if (e.key === "Escape" || (e.key === "Enter" && (e.ctrlKey || e.metaKey))) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      closeNotesBig();
+      return;
+    }
+    if (e.key === "Tab") {   // der Fokus bleibt in der Schreibflaeche
+      var f = Array.prototype.slice.call(notesBigCard.querySelectorAll("button, textarea"));
+      var i = f.indexOf(document.activeElement);
+      var next = e.shiftKey ? (i <= 0 ? f[f.length - 1] : null) : (i === -1 || i === f.length - 1 ? f[0] : null);
+      if (next) { e.preventDefault(); next.focus(); }
+    }
+  }, true);
+  var notesResizeTimer = null;
+  window.addEventListener("resize", function () {
+    clearTimeout(notesResizeTimer);
+    notesResizeTimer = setTimeout(function () {
+      if (notesBigOpen()) notesBigEl.classList.toggle("is-sheet", notesBigSheet());
+      fitEditor();
+    }, 120);
+  });
 
   // ---------- Aufruf per Link ----------
   // index.html?neu=Text legt den Text in den Eingang (iOS-Kurzbefehl, Lesezeichen,
@@ -8890,12 +9146,13 @@
     placeInboxCard: placeInboxCard, themeWithFade: themeWithFade,
     inboxInHub: function () { return inboxInHub; }, hubRoomWanted: hubRoomWanted,
     dialogSheetOpen: dialogSheetOpen, keyboardInset: keyboardInset,
+    fitNotes: fitNotes, openNotesBig: openNotesBig, closeNotesBig: closeNotesBig, notesBigOpen: notesBigOpen,
     fitLongestWord: fitLongestWord, hubOpen: function () { return hubOpen; }, parseMdToCore: parseMdToCore, slugify: slugify, coreFilename: coreFilename,
     coreStatus: coreStatus, coreProgress: coreProgress, cycleDetailStatus: cycleDetailStatus,
     allTags: allTags, toggleTagFilter: toggleTagFilter, clearTagFilter: clearTagFilter, computeCounts: computeCounts,
     highlightMatch: highlightMatch, setTheme: setTheme, glassFill: glassFill, sphereFill: sphereFill,
     toggleFocus: toggleFocus, clearFocus: clearFocus, coreIconSvg: coreIconSvg,
-    measureLayout: measureLayout, coreDiameter: coreDiameter, detailModeFor: detailModeFor, detailSizeFor: detailSizeFor,
+    measureLayout: measureLayout, detailModeFor: detailModeFor,
     setRotate: setRotate, setMotion: setMotion, motionEnabled: motionEnabled,
     setSpeed: setSpeed, speedFactor: speedFactor,
     setView: setView, renderTree: renderTree, treeExpanded: treeExpanded,
@@ -8909,7 +9166,7 @@
     openDetailEditor: openDetailEditor, openTagEditor: openTagEditor,
     commitHubEditor: commitHubEditor, closeHubEditor: closeHubEditor,
     selectDetail: selectDetail, selectedDetailObj: selectedDetailObj,
-    computePositions: computePositions, worstClearance: worstClearance, edgeMargin: edgeMargin,
+    computePositions: computePositions, worstClearance: worstClearance,
     MAX_CORES: MAX_CORES, MAX_DETAILS: MAX_DETAILS,
     exportJson: exportJson, applyJsonBackup: applyJsonBackup, moveDetail: moveDetail,
     visibleCores: visibleCores, clusterGroups: clusterGroups, setCluster: setCluster,
