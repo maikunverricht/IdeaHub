@@ -1517,7 +1517,7 @@
   .ihb-core > .ihb-name {
     position: absolute; left: 50%; top: calc(100% + 5px); transform: translateX(-50%);
     width: max-content; max-width: 9.5em; display: flex; flex-direction: column; align-items: center; gap: 1px;
-    text-align: center; pointer-events: auto; opacity: calc(1 - var(--fog, 0) * 0.5);
+    text-align: center; pointer-events: auto; opacity: calc((1 - var(--fog, 0) * 0.5) * var(--ndim, 1));
     transition: opacity .25s ease, visibility .25s;
   }
   .ihb-core > .ihb-name .ihb-label { -webkit-line-clamp: 2; }
@@ -1547,6 +1547,31 @@
   body[data-theme="minimal"] .ihb-core:not(.ihb-ghost)::after { background: rgba(238,241,246,var(--fog,0)); }
   /* kleine Kugeln: eine groessere Tippflaeche, unsichtbar */
   .ihb-core::before { content: ""; position: absolute; inset: calc(-1 * var(--hit, 0px)); border-radius: 50%; }
+  /* v5.3: Wolken - ein zarter Schleier in der Mischfarbe ihrer Ideen, am Rand ihr Tag */
+  #cloudsLayer { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .ihb-cloud {
+    position: absolute; left: 0; top: 0; border-radius: 50%; pointer-events: none;
+    background: radial-gradient(ellipse closest-side, rgba(var(--tint), .26), rgba(var(--tint), .14) 55%, rgba(var(--tint), .05) 82%, rgba(var(--tint), 0));
+    transition: opacity calc(.35s * var(--sp, 1)) ease;
+  }
+  /* hell: die Pastelltoene verschwinden auf dem hellen Grund, multipliziert tragen sie */
+  body[data-theme="minimal"] .ihb-cloud { mix-blend-mode: multiply; background: radial-gradient(ellipse closest-side, rgba(var(--tint), .5), rgba(var(--tint), .3) 55%, rgba(var(--tint), .1) 82%, rgba(var(--tint), 0)); }
+  .ihb-cloudname {
+    position: absolute; left: 0; top: 0; pointer-events: none; white-space: nowrap;
+    font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-2);
+    transition: opacity calc(.3s * var(--sp, 1)) ease;
+  }
+  body[data-motion="off"] .ihb-cloud, body[data-motion="off"] .ihb-cloudname { transition: none; }
+  /* v5.3: erledigt - kleiner Ball; sein Name etwas kleiner und blasser, er
+     haengt an der Kante der Kugel, nicht an ihrer Mitte */
+  .ihb-core:not(.ihb-core-open) > .ihb-name { transform: translateX(-50%) scale(var(--nsc, 1)); transform-origin: 50% 0; }
+  .ihb-core:not(.ihb-core-open) > .ihb-name[data-at="o"], .ihb-core:not(.ihb-core-open) > .ihb-name[data-at="go"] { transform-origin: 50% 100%; }
+  .ihb-core:not(.ihb-core-open) > .ihb-name[data-at="r"] { transform: translateY(-50%) scale(var(--nsc, 1)); transform-origin: 0 50%; }
+  .ihb-core:not(.ihb-core-open) > .ihb-name[data-at="l"] { transform: translateY(-50%) scale(var(--nsc, 1)); transform-origin: 100% 50%; }
+  .ihb-core.ihb-done > .ihb-name { --ndim: .66; }
+  .ihb-detail.ihb-ruht { visibility: hidden; pointer-events: none; }
+  .ihb-tree-row.is-done > .ihb-tree-label { opacity: .6; }
+  body[data-theme] .ihb-tree-meta.is-done { color: var(--free); }
   .ihb-vorhub { pointer-events: none; }
   /* Paket 2: das Gehirn dreht sich unter dem Finger; die Karte faengt die Geste
      (Glas und Listen darin scrollen weiter selbst) */
@@ -1673,6 +1698,7 @@
     <div id="starsLayer"><canvas id="starsCanvas" aria-hidden="true"></canvas></div>
 
     <div id="raumLayer">
+      <div id="cloudsLayer" aria-hidden="true"></div>
       <div id="sparkLayer"></div>
       <svg id="linesLayer" viewBox="0 0 100 100" style="position:absolute;inset:0;width:100%;height:100%;"></svg>
       <div id="bubblesLayer"></div>
@@ -1718,7 +1744,7 @@
 
   <div id="captionArea"></div>
 
-  <div class="ihb-version">IdeaHub v5.2</div>
+  <div class="ihb-version">IdeaHub v5.3</div>
 
   <input id="importInput" type="file" accept=".md,text/markdown" multiple style="display:none" />
   <input id="importJsonInput" type="file" accept=".json,application/json" style="display:none" />
@@ -2269,29 +2295,34 @@
   }
 
   // ---------- Wolken: Ideen mit gemeinsamen Tags ----------
-  // Zusammenhaengende Bereiche des Tag-Graphen: teilt A einen Tag mit B und B
-  // einen mit C, sind alle drei eine Wolke. Im Raum ruecken ihre Mitglieder zusammen.
+  // v5.3: Jede Idee gehoert zur Wolke ihres staerksten gemeinsamen Tags (den die
+  // meisten Ideen tragen; bei Gleichstand der im Alphabet erste). Frueher bildeten
+  // Ketten eine Wolke (A teilt einen Tag mit B, B einen mit C), und viele Tags
+  // verbanden schnell alles zu einem Klumpen. Querbezuege ziehen weiter, nur
+  // schwaecher (computeBrain). Ergebnis: Gruppen als Listen von Indizes in
+  // visibleCores(); eine Wolke traegt ihren Tag als .tag, Einzelne folgen.
   function clusterGroups() {
     var cores = visibleCores();
-    var parent = cores.map(function (_, i) { return i; });
-    function find(a) { while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; }
-    function union(a, b) { a = find(a); b = find(b); if (a !== b) parent[b] = a; }
-    for (var i = 0; i < cores.length; i++) {
-      for (var j = i + 1; j < cores.length; j++) {
-        var a = cores[i].tags || [], b = cores[j].tags || [];
-        var shared = false;
-        for (var k = 0; k < a.length; k++) if (b.indexOf(a[k]) !== -1) { shared = true; break; }
-        if (shared) union(i, j);
-      }
-    }
-    // keep each group in its original order, groups in order of first appearance
-    var seen = {}, order = [];
-    for (var m = 0; m < cores.length; m++) {
-      var root = find(m);
-      if (!seen[root]) { seen[root] = []; order.push(root); }
-      seen[root].push(m);
-    }
-    return order.map(function (r) { return seen[r]; });
+    var own = cores.map(function (c) {
+      var o = [];
+      (c.tags || []).forEach(function (t) { if (o.indexOf(t) === -1) o.push(t); });
+      return o;
+    });
+    var count = {};
+    own.forEach(function (ts) { ts.forEach(function (t) { count[t] = (count[t] || 0) + 1; }); });
+    var tags = Object.keys(count).filter(function (t) { return count[t] >= 2; });
+    tags.sort(function (a, b) { return (count[b] - count[a]) || (a < b ? -1 : a > b ? 1 : 0); });
+    var taken = cores.map(function () { return false; }), groups = [];
+    tags.forEach(function (t) {
+      var free = [];
+      own.forEach(function (ts, i) { if (!taken[i] && ts.indexOf(t) !== -1) free.push(i); });
+      if (free.length < 2) return;
+      free.forEach(function (i) { taken[i] = true; });
+      free.tag = t;
+      groups.push(free);
+    });
+    cores.forEach(function (c, i) { if (!taken[i]) groups.push([i]); });
+    return groups;
   }
 
   // ---------- Lage im Raum ----------
@@ -2353,22 +2384,70 @@
     var n = ids.length, i, j, k;
     var dirs = ids.map(seedDir);
     var seeds = dirs.map(function (d) { return d.slice(); });
-    var links = [];
+    var links = [], groups = [], gidx = ids.map(function () { return -1; });
     if (state.cluster) {
-      // Wolken: ihre Mitglieder starten um die gemeinsame Richtung herum ...
-      clusterGroups().forEach(function (g) {
-        if (g.length < 2) return;
+      // Wolken (v5.3): ihre Mitten verteilen sich gleichmaessig ueber die Form,
+      // grosse Wolken brauchen dabei mehr Platz ...
+      groups = clusterGroups().filter(function (g) { return g.length >= 2; });
+      groups.forEach(function (g, gi) { g.forEach(function (ci) { gidx[ci] = gi; }); });
+      var cen = groups.map(function (g) {
         var m = [0, 0, 0];
-        g.forEach(function (gi) { m[0] += dirs[gi][0]; m[1] += dirs[gi][1]; m[2] += dirs[gi][2]; });
-        m = (m[0] * m[0] + m[1] * m[1] + m[2] * m[2]) > 1e-9 ? norm3(m) : dirs[g[0]];
-        g.forEach(function (gi) {
-          var d = dirs[gi], dot = d[0] * m[0] + d[1] * m[1] + d[2] * m[2];
-          seeds[gi] = [m[0] + (d[0] - m[0] * dot) * 0.55, m[1] + (d[1] - m[1] * dot) * 0.55, m[2] + (d[2] - m[2] * dot) * 0.55];
+        g.forEach(function (ci) { m[0] += dirs[ci][0]; m[1] += dirs[ci][1]; m[2] += dirs[ci][2]; });
+        return (m[0] * m[0] + m[1] * m[1] + m[2] * m[2]) > 1e-9 ? norm3(m) : dirs[g[0]].slice();
+      });
+      var wg = groups.map(function (g) { return Math.sqrt(g.length); });
+      for (var cit = 0; cit < 90 && cen.length > 1; cit++) {
+        var mv = cen.map(function () { return [0, 0, 0]; });
+        for (i = 0; i < cen.length; i++) {
+          for (j = i + 1; j < cen.length; j++) {
+            var cx = cen[i][0] - cen[j][0], cy = cen[i][1] - cen[j][1], cz = cen[i][2] - cen[j][2];
+            var cd = Math.max(0.05, Math.sqrt(cx * cx + cy * cy + cz * cz)), cf = 0.02 * wg[i] * wg[j] / (cd * cd);
+            mv[i][0] += cx / cd * cf / wg[i]; mv[i][1] += cy / cd * cf / wg[i]; mv[i][2] += cz / cd * cf / wg[i];
+            mv[j][0] -= cx / cd * cf / wg[j]; mv[j][1] -= cy / cd * cf / wg[j]; mv[j][2] -= cz / cd * cf / wg[j];
+          }
+        }
+        cen = cen.map(function (c0, ck) {
+          var m0 = mv[ck], ml = Math.sqrt(m0[0] * m0[0] + m0[1] * m0[1] + m0[2] * m0[2]);
+          if (ml > 0.12) m0 = [m0[0] * 0.12 / ml, m0[1] * 0.12 / ml, m0[2] * 0.12 / ml];
+          return norm3([c0[0] + m0[0], c0[1] + m0[1], c0[2] + m0[2]]);
+        });
+      }
+      // ... ihre Mitglieder starten eng um die Mitte ...
+      var capR = groups.map(function (g) { return MIN_GAP3D * (0.5 + 0.45 * Math.sqrt(g.length)); });
+      // wer mit einer Wolke einen Tag teilt, darf an ihren Rand, die anderen bleiben weiter weg
+      var near = ids.map(function (id, ii) {
+        var mine = ii < cores.length ? (cores[ii].tags || []) : [];
+        return groups.map(function (g) {
+          return g.some(function (ci) { return (cores[ci].tags || []).some(function (t) { return mine.indexOf(t) !== -1; }); });
         });
       });
-      // ... und ziehen sich ueber jeden gemeinsamen Tag an
+      groups.forEach(function (g, gi) {
+        var m = cen[gi];
+        g.forEach(function (ci) {
+          var d = dirs[ci], dot = d[0] * m[0] + d[1] * m[1] + d[2] * m[2];
+          seeds[ci] = [m[0] + (d[0] - m[0] * dot) * 0.22, m[1] + (d[1] - m[1] * dot) * 0.22, m[2] + (d[2] - m[2] * dot) * 0.22];
+        });
+      });
+      // ... und einzelne Ideen (und der Platzhalter) starten ausserhalb der Wolken;
+      // teilt eine mit einer Wolke einen Tag, startet sie an deren Rand
+      for (i = 0; i < n; i++) {
+        if (gidx[i] !== -1) continue;
+        var home = near[i].indexOf(true);
+        for (var gk = 0; gk < groups.length; gk++) {
+          var m1 = cen[gk], d1 = norm3(seeds[i]);
+          var dot1 = Math.max(-1, Math.min(1, d1[0] * m1[0] + d1[1] * m1[1] + d1[2] * m1[2])), need = capR[gk] + (near[i][gk] ? 0.08 : 0.35);
+          if (gk !== home && Math.acos(dot1) >= need) continue;
+          var tg = [d1[0] - m1[0] * dot1, d1[1] - m1[1] * dot1, d1[2] - m1[2] * dot1];
+          if (tg[0] * tg[0] + tg[1] * tg[1] + tg[2] * tg[2] < 1e-9) tg = cross3(m1, Math.abs(m1[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0]);
+          tg = norm3(tg);
+          var cn = Math.cos(need), sn = Math.sin(need);
+          seeds[i] = [m1[0] * cn + tg[0] * sn, m1[1] * cn + tg[1] * sn, m1[2] * cn + tg[2] * sn];
+        }
+      }
+      // Querbezuege: Ideen verschiedener Wolken mit einem gemeinsamen Tag ziehen sich schwach an
       for (i = 0; i < cores.length; i++) {
         for (j = i + 1; j < cores.length; j++) {
+          if (gidx[i] !== -1 && gidx[i] === gidx[j]) continue;
           var ta = cores[i].tags || [], tb = cores[j].tags || [];
           for (k = 0; k < ta.length; k++) if (tb.indexOf(ta[k]) !== -1) { links.push([i, j]); break; }
         }
@@ -2383,6 +2462,8 @@
         for (j = i + 1; j < n; j++) {
           var dx = P[i][0] - P[j][0], dy = P[i][1] - P[j][1], dz = P[i][2] - P[j][2];
           var d = Math.max(0.06, Math.sqrt(dx * dx + dy * dy + dz * dz)), f = 0.02 / (d * d);
+          // in einer Wolke stossen sie sich weniger ab, zwischen Wolken mehr
+          if (gidx[i] !== -1 && gidx[j] !== -1) f *= gidx[i] === gidx[j] ? 0.3 : 1.6;
           F[i][0] += dx / d * f; F[i][1] += dy / d * f; F[i][2] += dz / d * f;
           F[j][0] -= dx / d * f; F[j][1] -= dy / d * f; F[j][2] -= dz / d * f;
         }
@@ -2390,9 +2471,27 @@
       links.forEach(function (l) {
         var a = P[l[0]], b = P[l[1]];
         var lx = b[0] - a[0], ly = b[1] - a[1], lz = b[2] - a[2];
-        var ld = Math.max(0.06, Math.sqrt(lx * lx + ly * ly + lz * lz)), lf = 0.06 * (ld - 0.5);
+        var ld = Math.max(0.06, Math.sqrt(lx * lx + ly * ly + lz * lz)), lf = 0.04 * (ld - 0.55);
         F[l[0]][0] += lx / ld * lf; F[l[0]][1] += ly / ld * lf; F[l[0]][2] += lz / ld * lf;
         F[l[1]][0] -= lx / ld * lf; F[l[1]][1] -= ly / ld * lf; F[l[1]][2] -= lz / ld * lf;
+      });
+      // jede Wolke zieht ihre Mitglieder zu ihrer Mitte und haelt alle anderen
+      // Ideen aus sich heraus
+      groups.forEach(function (g, gn) {
+        var m = [0, 0, 0];
+        g.forEach(function (gi) { m[0] += P[gi][0]; m[1] += P[gi][1]; m[2] += P[gi][2]; });
+        m[0] /= g.length; m[1] /= g.length; m[2] /= g.length;
+        g.forEach(function (gi) {
+          F[gi][0] += (m[0] - P[gi][0]) * 0.12; F[gi][1] += (m[1] - P[gi][1]) * 0.12; F[gi][2] += (m[2] - P[gi][2]) * 0.12;
+        });
+        for (var o = 0; o < n; o++) {
+          if (gidx[o] === gn) continue;
+          var ox = P[o][0] - m[0], oy = P[o][1] - m[1], oz = P[o][2] - m[2], od = Math.sqrt(ox * ox + oy * oy + oz * oz);
+          var keepOut = capR[gn] + (near[o][gn] ? 0.08 : 0.35);
+          if (od >= keepOut || od < 1e-6) continue;
+          var of = 0.08 * (keepOut - od) / keepOut;
+          F[o][0] += ox / od * of; F[o][1] += oy / od * of; F[o][2] += oz / od * of;
+        }
       });
       for (k = 0; k < n; k++) {
         F[k][0] += (A[k][0] - P[k][0]) * 0.04;
@@ -2487,12 +2586,14 @@
   // schwer) oder die vor ihm liegen und durchscheinen muessen, und Ideen am Rand.
   // Dazu ein kleiner Preis fuer eine schiefe Ansicht, in der alle Ideen auf
   // einer Seite des Hubs liegen: ringsum verteilt liest sich das Gehirn besser.
+  var OVERLAP_W = 0.5;
   function viewCost(yaw, pitch) {
     var L = layout, W = L.width, c = W / 2, hubR = BASE.hub * L.s / 2, cost = 0, pr = {};
-    var sx = 0, sy = 0, n = 0;
+    var sx = 0, sy = 0, n = 0, pts = [];
     Object.keys(brain.pos).forEach(function (id) {
       projectWith(brain.pos[id], yaw, pitch, pr);
       var r = RC * pr.k;
+      if (id !== GHOST_ID) pts.push({ x: pr.x, y: pr.y, r: r });
       var dist = distance(pr.x, pr.y, c, c);
       var gap = dist - hubR - r - 6 * L.s;
       if (gap < 0) cost += (pr.z < 0 ? 3 : 1) * Math.min(1, -gap / (hubR + r)) * (id === GHOST_ID ? 1.5 : 1);
@@ -2501,6 +2602,13 @@
       if (id !== GHOST_ID && dist > 0) { sx += (pr.x - c) / dist; sy += (pr.y - c) / dist; n++; }
     });
     if (n >= 3) cost += 0.35 * Math.sqrt(sx * sx + sy * sy) / n;
+    // v5.3: Kugeln, die sich im Bild decken, kosten auch (in engen Wolken haeufiger)
+    for (var a = 0; a < pts.length; a++) {
+      for (var b = a + 1; b < pts.length; b++) {
+        var ov = pts[a].r + pts[b].r - distance(pts[a].x, pts[a].y, pts[b].x, pts[b].y);
+        if (ov > 0) cost += OVERLAP_W * Math.min(1, ov / Math.min(pts[a].r, pts[b].r));
+      }
+    }
     return cost;
   }
   function bestView(near) {
@@ -2764,12 +2872,54 @@
   // Er laeuft nur, solange sich etwas bewegt.
   var focusP = {};
   var focusPath = {};   // je Idee im Uebergang: Anfang und Ziel in Polarform um die Mitte
+  // v5.3: erledigte Ideen (alle Details erledigt) werden kleine Baelle, ihre
+  // Punkte ruhen; die Groesse gleitet, wenn sich der Stand aendert. Die Lage im
+  // Raum bleibt dieselbe.
+  var DONE_SCALE = 0.6;   // Durchmesser einer erledigten Idee, als Anteil
+  var DONE_NAME = 0.86;   // ihr Name, als Anteil der ueblichen Groesse
+  var doneP = {};         // 0 offen ... 1 erledigt, je Kernidee
+  var doneAnim = { on: false, t: 0 };
+  function coreDone(core) { return coreStatus(core) === "erledigt"; }
+  function doneOf(id) { var v = doneP[id] || 0; return v <= 0 ? 0 : v >= 1 ? 1 : easeInOutCubic(v); }
+  function doneScale(dn) { return 1 - (1 - DONE_SCALE) * dn; }
+  // nach jedem Zeichnen: neue Ideen stehen gleich richtig, geaenderte gleiten
+  function syncDone() {
+    var seen = {}, moving = false, snap = !canAnimate();
+    state.cores.forEach(function (c) {
+      var goal = coreDone(c) ? 1 : 0;
+      seen[c.id] = true;
+      if (doneP[c.id] === undefined || snap) doneP[c.id] = goal;
+      else if (doneP[c.id] !== goal) moving = true;
+    });
+    Object.keys(doneP).forEach(function (id) { if (!seen[id]) delete doneP[id]; });
+    if (snap) doneAnim.on = false;
+    else if (moving && !doneAnim.on) { doneAnim.on = true; doneAnim.t = Date.now(); }
+  }
+  function snapDone() {
+    state.cores.forEach(function (c) { doneP[c.id] = coreDone(c) ? 1 : 0; });
+    doneAnim.on = false;
+  }
+  function stepDone(t) {
+    if (!doneAnim.on) return true;
+    var stp = Math.max(0, t - doneAnim.t) / Math.max(1, Math.round(450 * speedFactor())), still = false;
+    doneAnim.t = t;
+    state.cores.forEach(function (c) {
+      var goal = coreDone(c) ? 1 : 0, v = doneP[c.id];
+      if (v === undefined) { doneP[c.id] = goal; return; }
+      if (v === goal) return;
+      v = goal > v ? Math.min(goal, v + stp) : Math.max(goal, v - stp);
+      doneP[c.id] = v;
+      if (v !== goal) still = true;
+    });
+    if (!still) doneAnim.on = false;
+    return !still;
+  }
   var focusAnim = { from: null, target: null, t0: 0, dur: 0 };
   var viewAnim = { from: null, to: null, t0: 0, dur: 0 };
   var settleQueue = [];
   var animRaf = null;
   var focusEndPending = false;
-  function tweenActive() { return !!(focusAnim.from || viewAnim.from || brainAnim.from || roomAnim.active); }
+  function tweenActive() { return !!(focusAnim.from || viewAnim.from || brainAnim.from || roomAnim.active || doneAnim.on); }
   function animMs() { return Math.round(780 * speedFactor()); }
   function canAnimate() { return motionEnabled() && typeof requestAnimationFrame === "function"; }
   function startViewTween(to) {
@@ -2841,6 +2991,7 @@
       roomAnim.p = roomAnim.from + (roomAnim.to - roomAnim.from) * easeInOutCubic(p);
       if (p >= 1) { roomAnim.active = false; roomAnim.p = roomAnim.to; } else done = false;
     }
+    if (!stepDone(t)) done = false;
     return done;
   }
   // ---------- Drehen: Zustand (Paket 2; die Gesten stehen beim Zoom) ----------
@@ -2891,6 +3042,7 @@
     if (typeof requestAnimationFrame !== "function") {
       stopSpin();
       focusAnim.from = null; viewAnim.from = null; brainAnim.from = null; brainAnim.e = 1;
+      if (doneAnim.on) snapDone();
       if (roomAnim.active) { roomAnim.active = false; roomAnim.p = roomAnim.to; }
       frame();
       settleAnims();
@@ -2984,7 +3136,7 @@
       if (!p) return;
       projectWith(p, view.yaw, view.pitch, pr);
       var fp = focusP[core.id] || 0;
-      var dd = 2 * RC * pr.k, x = pr.x, y = pr.y, fog = fogAlpha(pr.d);
+      var dn = doneOf(core.id), dd = 2 * RC * pr.k * doneScale(dn), x = pr.x, y = pr.y, fog = fogAlpha(pr.d);
       if (fp > 0) {
         var pl = plans[core.id], path = focusAnim.from ? focusPath[core.id] : null;
         var dd1 = dd + (L.coreFocus - dd) * fp;
@@ -3008,7 +3160,7 @@
         // verbundene Ideen treten nur halb so weit zurueck
         dd *= 1 - (tagLinked(core, focusLead) ? 0.15 : 0.3) * amt;
       }
-      next[core.id] = { x: x, y: y, r: dd / 2, z: pr.z, fog: fog, k: pr.k, fp: fp, w: p };
+      next[core.id] = { x: x, y: y, r: dd / 2, z: pr.z, fog: fog, k: pr.k, fp: fp, w: p, dn: dn };
     });
     if (brain.pos[GHOST_ID]) {
       projectWith(worldPos(GHOST_ID), view.yaw, view.pitch, pr);
@@ -3027,7 +3179,9 @@
       for (var j = 0; j < n; j++) {
         var key = j >= core.details.length ? "gd:" + core.id : "d:" + core.details[j].id;
         projectWith(cone[j], view.yaw, view.pitch, pr);
-        var miniD = 2 * RD * pr.k * (fp > 0 ? 1 : 1 - 0.3 * amt);
+        // erledigt: die stillen Punkte ruhen; Fokus und Suchtreffer zeigen sie
+        var rest = mode === "full" && !(fp > 0) ? 0 : (cq.dn || 0) * (1 - fp);
+        var miniD = 2 * RD * pr.k * (fp > 0 ? 1 : 1 - 0.3 * amt) * (1 - rest);
         // weicht die Idee dem offenen Hub aus, kommen ihre Punkte mit
         var x = pr.x + (cq.sx || 0), y = pr.y + (cq.sy || 0), d = miniD, fog = fogAlpha(pr.d), full = false;
         if (fp > 0 && pl && pl.offs[j]) {
@@ -3048,7 +3202,7 @@
           x = Math.max(d / 2, Math.min(L.width - d / 2, x));
           y = Math.max(d / 2, Math.min(L.width - d / 2, y));
         }
-        next[key] = { x: x, y: y, r: d / 2, z: pr.z, fog: fog, k: pr.k, fp: fp, full: full };
+        next[key] = { x: x, y: y, r: d / 2, z: pr.z, fog: fog, k: pr.k, fp: fp, full: full, vis: 1 - rest };
       }
     });
     if (roomAnim.p > 0 && roomKind === "bar") {
@@ -3060,6 +3214,7 @@
     writeBubbles();
     writeLines();
     placeLabels();
+    writeClouds();
     drawStars();
   }
 
@@ -3099,8 +3254,15 @@
       var vis = 2 * q.r;
       var tiny = vis < 26;
       if (el._tiny !== tiny) { el._tiny = tiny; el.classList.toggle("ihb-tiny", tiny); }
-      // kleine Kugeln bekommen eine groessere Tippflaeche
-      var hs = (Math.max(0, (40 - vis) / 2) / Math.max(0.05, el._scNum || 1)).toFixed(1) + "px";
+      // erledigt: kleiner Ball, der Name etwas kleiner und blasser
+      var dn = q.fp > 0.001 ? 0 : (q.dn || 0);
+      var done = dn > 0.5;
+      if (el._done !== done) { el._done = done; el.classList.toggle("ihb-done", done); }
+      var nsc = dn > 0.001 ? ((1 - (1 - DONE_NAME) * dn) / doneScale(dn)).toFixed(3) : "";
+      if (el._nsc !== nsc) { el._nsc = nsc; if (nsc) el.style.setProperty("--nsc", nsc); else el.style.removeProperty("--nsc"); }
+      // kleine Kugeln bekommen eine groessere Tippflaeche; ein erledigter Ball
+      // behaelt die der vollen Kugel
+      var hs = (Math.max(0, (Math.max(40, vis / doneScale(dn)) - vis) / 2) / Math.max(0.05, el._scNum || 1)).toFixed(1) + "px";
       if (el._hit !== hs) { el.style.setProperty("--hit", hs); el._hit = hs; }
       var fading = q.fp > 0.001 && state.focusedId !== core.id;
       if (el._fading !== fading) { el._fading = fading; el.classList.toggle("ihb-fading", fading); }
@@ -3110,6 +3272,8 @@
         var de = dom.details[d.id], dq = P2["d:" + d.id];
         if (!de || !dq) return;
         placeEl(de, dq, dq.fp > 0.001 ? 41 : dz);
+        var still = dq.r < 0.25;
+        if (de._still !== still) { de._still = still; de.classList.toggle("ihb-ruht", still); }
         var vh = !raised && dq.fp < 0.01 && dz > 10 && distance(dq.x, dq.y, c, c) < hubR + dq.r * 0.7;
         if (de._vh !== vh) { de._vh = vh; de.classList.toggle("ihb-vorhub", vh); }
       });
@@ -3141,7 +3305,7 @@
       if (Ln.core[core.id]) setLine(Ln.core[core.id], 50, 50, pctW(q.x), pctW(q.y), fo);
       core.details.forEach(function (d) {
         var ln = Ln.det[d.id], dq = P2["d:" + d.id];
-        if (ln && dq) setLine(ln, pctW(q.x), pctW(q.y), pctW(dq.x), pctW(dq.y), Math.min(q.fog, dq.fog).toFixed(2));
+        if (ln && dq) setLine(ln, pctW(q.x), pctW(q.y), pctW(dq.x), pctW(dq.y), (Math.min(q.fog, dq.fog) * (dq.vis === undefined ? 1 : dq.vis)).toFixed(2));
       });
     });
     var clearPct = (L.hub / 2 / L.width) * 100 + 7;
@@ -3242,7 +3406,7 @@
     if (zoomBox) placed.push(zoomBox);
     list.forEach(function (it) {
       if (!it.forced) return;
-      var nm = it.el._name, sc = it.el._scNum || 1, w = (nm._w || 0) * sc, h = (nm._h || 0) * sc;
+      var nm = it.el._name, sc = it.el._scNum || 1, ns = parseFloat(it.el._nsc) || 1, w = (nm._w || 0) * sc * ns, h = (nm._h || 0) * sc * ns;
       it.room = NAME_AT.filter(function (a) {
         var r = nameRect(a, it.q, w, h, sc);
         return r.x >= -2 && r.x + r.w <= L.width + 2 && r.y >= -2 && r.y + r.h <= L.width + 2 && !rectHits(growRect(r, 2), placed);
@@ -3250,8 +3414,8 @@
     });
     list.sort(function (a, b) { return ((b.id === hoverId) - (a.id === hoverId)) || (b.forced - a.forced) || (a.forced && b.forced ? a.room - b.room : 0) || (b.q.z - a.q.z); });
     list.forEach(function (it) {
-      var nm = it.el._name, sc = it.el._scNum || 1;
-      var w = (nm._w || 0) * sc, h = (nm._h || 0) * sc;
+      var nm = it.el._name, sc = it.el._scNum || 1, ns = parseFloat(it.el._nsc) || 1;
+      var w = (nm._w || 0) * sc * ns, h = (nm._h || 0) * sc * ns;
       // vor dem Hub und, im Fokus, zu klein zurueckgetreten: kein Name
       // im Fokus tragen nur die verbundenen Ideen ihren Namen (und die unter dem Zeiger)
       var allowed = it.el._vor !== 0.4 && !(amt > 0.5 && (2 * it.q.r < 30 || (!it.el._linked && !it.forced)));
@@ -3312,6 +3476,139 @@
       if (nm._shown !== show) { nm._shown = show; nm.classList.toggle("is-hidden", !show); }
     });
     labelsFresh = false;
+    cloudPlaced = placed;
+    cloudSpheres = spheres;
+  }
+
+  // ---------- Wolken sichtbar (v5.3) ----------
+  // Hinter jeder Wolke ein zarter Schleier in der Mischfarbe ihrer Ideen, am Rand
+  // ihr Tag. Die Elemente bleiben ueber das Neuzeichnen erhalten (nach Tag), damit
+  // nichts aufblinkt; gezeichnet wird in jedem Bild aus dem, was gerade steht.
+  var cloudPlaced = [], cloudSpheres = [];
+  function syncClouds(cores) {
+    if (!cloudsLayer) return;
+    var list = [];
+    if (state.cluster) {
+      clusterGroups().forEach(function (g) {
+        if (g.length < 2 || !g.tag) return;
+        var mix = [0, 0, 0];
+        g.forEach(function (ci) {
+          String(paletteFor(cores[ci], ci).rgb).split(",").forEach(function (v, vi) { if (vi < 3) mix[vi] += (parseFloat(v) || 0) / g.length; });
+        });
+        list.push({ tag: g.tag, ids: g.map(function (ci) { return cores[ci].id; }),
+          tint: Math.round(mix[0]) + "," + Math.round(mix[1]) + "," + Math.round(mix[2]) });
+      });
+    }
+    var keep = {};
+    cloudEls.forEach(function (cl) { keep[cl.tag] = cl; });
+    cloudEls = list.map(function (cl) {
+      var old = keep[cl.tag];
+      if (old) {
+        delete keep[cl.tag];
+        old.ids = cl.ids;
+        if (old.tint !== cl.tint) { old.tint = cl.tint; old.el.style.setProperty("--tint", cl.tint); }
+        return old;
+      }
+      var el = document.createElement("div");
+      el.className = "ihb-cloud";
+      el.setAttribute("data-cloud", cl.tag);
+      el.style.setProperty("--tint", cl.tint);
+      el.style.opacity = "0";
+      var nm = document.createElement("div");
+      nm.className = "ihb-cloudname";
+      nm.setAttribute("data-cloud-name", cl.tag);
+      nm.textContent = cl.tag;
+      nm.style.opacity = "0";
+      cloudsLayer.appendChild(el);
+      cloudsLayer.appendChild(nm);
+      cl.el = el; cl.nameEl = nm; cl.w = 0; cl.h = 0; cl.at = null;
+      return cl;
+    });
+    Object.keys(keep).forEach(function (t) {
+      var cl = keep[t];
+      if (cl.el.parentNode) cl.el.parentNode.removeChild(cl.el);
+      if (cl.nameEl.parentNode) cl.nameEl.parentNode.removeChild(cl.nameEl);
+    });
+    cloudEls.forEach(function (cl) {
+      if (!cl.w) { cl.w = cl.nameEl.offsetWidth || 0; cl.h = cl.nameEl.offsetHeight || 0; }
+    });
+  }
+  function cloudInfo() {
+    return cloudEls.map(function (cl) {
+      return { tag: cl.tag, ids: cl.ids.slice(), box: cl.box || null, label: cl.rect || null,
+        op: parseFloat(cl.el.style.opacity) || 0, labelOp: parseFloat(cl.nameEl.style.opacity) || 0 };
+    });
+  }
+  function setCloudOp(el, op) {
+    var v = op.toFixed(2);
+    if (el._op !== v) { el.style.opacity = v; el._op = v; }
+  }
+  function writeClouds() {
+    if (!cloudEls.length) return;
+    var L = layout, c = L.width / 2, amt = 0;
+    Object.keys(focusP).forEach(function (id) { if (focusP[id] > amt) amt = focusP[id]; });
+    var searching = state.query.trim().length > 0 || state.activeTags.length > 0;
+    // im Fokus treten die Wolken ganz zurueck, bei der Suche und am offenen Hub zum Teil
+    var calm = (1 - amt) * (searching ? 0.35 : 1) * (hubOpen || hubClosing ? 0.45 : 1);
+    var taken = cloudPlaced.slice();
+    cloudEls.forEach(function (cl) {
+      var pts = [];
+      cl.ids.forEach(function (id) { var q = P2[id]; if (q && !(q.fp > 0.001)) pts.push(q); });
+      if (pts.length < 2 || calm < 0.02) { setCloudOp(cl.el, 0); setCloudOp(cl.nameEl, 0); cl.at = null; return; }
+      var n = pts.length, mx = 0, my = 0, fog = 0, rs = 0;
+      pts.forEach(function (q) { mx += q.x; my += q.y; fog += q.fog; rs += q.r; });
+      mx /= n; my /= n; fog /= n; rs /= n;
+      // Achsen der Wolke im Bild: der Schleier ist eine Ellipse um ihre Kugeln
+      var sxx = 0, syy = 0, sxy = 0;
+      pts.forEach(function (q) { var dx = q.x - mx, dy = q.y - my; sxx += dx * dx; syy += dy * dy; sxy += dx * dy; });
+      var th = 0.5 * Math.atan2(2 * sxy, sxx - syy), ct = Math.cos(th), st = Math.sin(th), a = 0, b = 0;
+      pts.forEach(function (q) {
+        var dx = q.x - mx, dy = q.y - my;
+        a = Math.max(a, Math.abs(dx * ct + dy * st) + q.r);
+        b = Math.max(b, Math.abs(-dx * st + dy * ct) + q.r);
+      });
+      var pad = rs * 0.9 + 6 * L.s;
+      a += pad; b = Math.max(b + pad, a * 0.6);
+      var el = cl.el, key = mx.toFixed(1) + "|" + my.toFixed(1) + "|" + a.toFixed(1) + "|" + b.toFixed(1) + "|" + th.toFixed(3);
+      if (el._k !== key) {
+        el._k = key;
+        el.style.width = (2 * a).toFixed(1) + "px";
+        el.style.height = (2 * b).toFixed(1) + "px";
+        el.style.translate = (mx - a).toFixed(1) + "px " + (my - b).toFixed(1) + "px";
+        el.style.rotate = th.toFixed(3) + "rad";
+      }
+      // hinten blasser als der Nebel allein: vordere Wolken sollen fuehren
+      var op = calm * (0.25 + 0.75 * fog * fog);
+      setCloudOp(el, op);
+      cl.box = { x: mx, y: my, a: a, b: b, th: th };
+      // der Tag steht am Rand, der vom Hub weg zeigt, sonst oben oder unten; er
+      // weicht Namen, Kugeln und dem Hub aus, findet er keinen Platz, bleibt er weg
+      var ux = mx - c, uy = my - c, ul = Math.sqrt(ux * ux + uy * uy);
+      if (ul < 1) { ux = 0; uy = -1; } else { ux /= ul; uy /= ul; }
+      var edge = function (dx, dy, f) {
+        var eu = dx * ct + dy * st, ev = -dx * st + dy * ct, t = f / Math.sqrt(sq(eu / a) + sq(ev / b));
+        return { x: mx + dx * t, y: my + dy * t };
+      };
+      var w = cl.w, h = cl.h, CAND = ["out", "top", "bot", "rgt", "lft", "weit"];
+      var cands = { out: edge(ux, uy, 0.84), top: edge(0, -1, 0.84), bot: edge(0, 1, 0.84), rgt: edge(1, 0, 0.84), lft: edge(-1, 0, 0.84), weit: edge(ux, uy, 1.12) };
+      var order = cl.at ? [cl.at].concat(CAND.filter(function (k) { return k !== cl.at; })) : CAND;
+      var at = null, rect = null;
+      for (var i = 0; i < order.length && !at && w > 0; i++) {
+        var p = cands[order[i]], r = { x: p.x - w / 2, y: p.y - h / 2, w: w, h: h };
+        if (r.x < 2 || r.y < 2 || r.x + r.w > L.width - 2 || r.y + r.h > L.width - 2) continue;
+        var g = growRect(r, order[i] === cl.at ? 1 : 3);
+        if (rectHits(g, taken) || rectHits(g, cloudSpheres)) continue;
+        at = order[i]; rect = r;
+      }
+      cl.at = at;
+      cl.rect = rect;
+      if (rect) {
+        taken.push(rect);
+        var nk = rect.x.toFixed(1) + "px " + rect.y.toFixed(1) + "px";
+        if (cl.nameEl._k !== nk) { cl.nameEl._k = nk; cl.nameEl.style.translate = nk; }
+      }
+      setCloudOp(cl.nameEl, rect ? Math.min(0.9, op * 1.5) : 0);
+    });
   }
 
   // Sternenstaub fuer die Tiefe: fest verteilte Punkte weit hinter dem Gehirn,
@@ -3615,6 +3912,8 @@
   var sparkLayer = document.getElementById("sparkLayer");
   var linesLayer = document.getElementById("linesLayer");
   var bubblesLayer = document.getElementById("bubblesLayer");
+  var cloudsLayer = document.getElementById("cloudsLayer");
+  var cloudEls = [];   // v5.3: je Wolke { tag, ids, el, nameEl, w, h, at }
   var hubAnchor = document.getElementById("hubAnchor");
   var zoomCtl = document.getElementById("zoomCtl");
   var hubCountEl = document.getElementById("hubCount");
@@ -4326,6 +4625,7 @@
 
     linesLayer.innerHTML = crossLinkSvg() + linesHtml;
     bubblesLayer.innerHTML = bubblesHtml;
+    syncClouds(cores);
     cacheDom();
     applyFilter();
     updateHubCount();
@@ -4335,6 +4635,7 @@
     applyHubSize();
     measureNames();
     updateZoomControls();
+    syncDone();
     frame();
     kick();
   }
@@ -6563,7 +6864,8 @@
         core.details.forEach(function (d) { if (f.details.get(d.id)) branchVisible = true; });
       }
       if (branchVisible) anyVisible = true;
-      html += '<div class="ihb-tree-row' + (f.coreActive ? "" : " is-dimmed") + '" role="treeitem" ' +
+      var isDone = coreDone(core);
+      html += '<div class="ihb-tree-row' + (f.coreActive ? "" : " is-dimmed") + (isDone ? " is-done" : "") + '" role="treeitem" ' +
         'aria-selected="' + sel + '" tabindex="0" data-role="tree-core" data-core-id="' + core.id + '">' +
         '<button type="button" class="ihb-tree-twisty' + (core.details.length ? "" : " is-leaf") + '" ' +
         'data-role="tree-toggle" data-core-id="' + core.id + '" aria-expanded="' + expanded + '" ' +
@@ -6572,7 +6874,7 @@
         "</button>" +
         '<span class="ihb-tree-dot" style="background:' + paletteFor(core, ci).core + '"></span>' +
         '<span class="ihb-tree-label">' + escapeHtml(core.text || "Ohne Titel") + "</span>" +
-        (pr.total ? '<span class="ihb-tree-meta">' + pr.done + "/" + pr.total + "</span>" : "") +
+        (pr.total ? '<span class="ihb-tree-meta' + (isDone ? ' is-done" title="Erledigt">✓ ' : '">') + pr.done + "/" + pr.total + "</span>" : "") +
         treeRowActions(core.id, null) +
         "</div>";
       if (expanded) {
@@ -9169,7 +9471,8 @@
     computePositions: computePositions, worstClearance: worstClearance,
     MAX_CORES: MAX_CORES, MAX_DETAILS: MAX_DETAILS,
     exportJson: exportJson, applyJsonBackup: applyJsonBackup, moveDetail: moveDetail,
-    visibleCores: visibleCores, clusterGroups: clusterGroups, setCluster: setCluster,
+    visibleCores: visibleCores, clusterGroups: clusterGroups, setCluster: setCluster, cloudInfo: cloudInfo,
+    doneOf: doneOf, coreDone: coreDone, DONE_SCALE: DONE_SCALE,
     crossLinks: crossLinks, linkPath: linkPath, setShowLinks: setShowLinks, paletteFor: paletteFor, hexToRgbTriple: hexToRgbTriple,
     getLayout: function () { return layout; },
     // Raum (v5.0)
