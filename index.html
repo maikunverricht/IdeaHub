@@ -1559,6 +1559,8 @@
   body[data-theme="minimal"] .ihb-core:not(.ihb-ghost)::after { background: rgba(238,241,246,var(--fog,0)); }
   /* kleine Kugeln: eine groessere Tippflaeche, unsichtbar */
   .ihb-core::before { content: ""; position: absolute; inset: calc(-1 * var(--hit, 0px)); border-radius: 50%; }
+  /* v5.8: das Blatt in der Leseansicht hoechstens halb so hoch, es scrollt innen */
+  body[data-theme] .ihb-dialogsheet.ihb-sheet-info:not(.ihb-sheet-edit) .ihb-dialogcard { max-height: calc(50% - var(--kb, 0px)); }
   /* v5.6: Fundstelle unter dem Namen, wenn der Treffer in Beschreibung oder Tags steht */
   .ihb-snip { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal;
     font-size: 11px; font-weight: 400; line-height: 1.3; letter-spacing: 0; color: var(--text-2, #9aa3b5); max-width: 210px; margin: 3px auto 0; text-align: center; }
@@ -1741,7 +1743,7 @@
     <div id="raumLayer">
       <div id="cloudsLayer" aria-hidden="true"></div>
       <div id="sparkLayer"></div>
-      <svg id="linesLayer" viewBox="0 0 100 100" style="position:absolute;inset:0;width:100%;height:100%;"></svg>
+      <svg id="linesLayer" viewBox="0 0 100 100" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;"></svg>
       <div id="bubblesLayer"></div>
     </div>
 
@@ -1785,7 +1787,7 @@
 
   <div id="captionArea"></div>
 
-  <div class="ihb-version">IdeaHub v5.6</div>
+  <div class="ihb-version">IdeaHub v5.8</div>
 
   <input id="importInput" type="file" accept=".md,text/markdown" multiple style="display:none" />
   <input id="importJsonInput" type="file" accept=".json,application/json" style="display:none" />
@@ -2238,7 +2240,7 @@
   var MAX_CORES = 24;
   // Above this the map still works, but it is worth telling the user it is filling up.
   var COMFORT_CORES = 8;
-  var MAX_DETAILS = 5;
+  var MAX_DETAILS = 12;   // v5.8: bisher 5; die Krone legt dafuer weitere Boegen an
   var STORAGE_KEY = "cores";
   var LINKS_KEY = "crosslinks";
   var ROTATE_KEY = "orbit";
@@ -2696,8 +2698,9 @@
   // Bogen um sie, quer zum Blick und vom Hub weg. Gemessen, nicht geschaetzt:
   // jede Lage wird gegen Kartenrand und Hub geprueft; passt sie nicht, dreht
   // der Bogen, wird weiter oder die Kugeln werden kleiner.
-  function crownFor(cp, n, outAngle, ext) {
+  function crownFor(cp, n, outAngle, ext, reg) {
     var L = layout, s = L.s, W = L.width, gap = 10 * s, edge = BASE.edge * s;
+    reg = reg || { x0: edge, y0: edge, x1: W - edge, y1: W - edge };
     if (n < 1) return { offs: [], dd: L.focusW, ok: true, worst: Infinity };
     var minDD = Math.min(L.focusW, Math.max(30, 34 * s));
     var dds = [];
@@ -2721,14 +2724,15 @@
               for (var j = 0; j < arc.n; j++) {
                 var a = mid - arc.spread / 2 + arc.step * j;
                 var x = cp.x + arc.R * Math.cos(a), y = cp.y + arc.R * Math.sin(a);
-                var m = Math.min(x - dd / 2 - edge, W - edge - x - dd / 2, y - dd / 2 - edge, W - edge - y - dd / 2,
+                var m = Math.min(x - dd / 2 - reg.x0, reg.x1 - x - dd / 2, y - dd / 2 - reg.y0, reg.y1 - y - dd / 2,
                   hubGap(x, y, ext) - dd / 2 - gap);
+                (reg.blocks || []).forEach(function (bk) { m = Math.min(m, rectGap(x, y, bk) - dd / 2 - gap); });
                 if (m < worst) worst = m;
                 offs.push({ dx: x - cp.x, dy: y - cp.y });
               }
             });
-            if (worst >= 0) return { offs: offs, dd: dd, ok: true, worst: worst };
-            if (!fallback || worst > fallback.worst) fallback = { offs: offs, dd: dd, ok: false, worst: worst };
+            if (worst >= 0) return { offs: offs, dd: dd, ok: true, worst: worst, rows: rows };
+            if (!fallback || worst > fallback.worst) fallback = { offs: offs, dd: dd, ok: false, worst: worst, rows: rows };
           }
         }
       }
@@ -2754,42 +2758,185 @@
     }
     return arcs;
   }
+  // v5.8: Wo auf dem Bildschirm Platz ist, in Kartenpixeln. Die Karte ist ein
+  // Quadrat in der Mitte; daneben (Rechner, Tablet quer) oder darueber ist oft
+  // mehr Raum. Oben endet er an Leiste und Tag-Filtern, unten am Blatt.
+  var SHEET_INFO_MAX = 0.5;   // das Blatt in der Leseansicht: hoechstens so hoch (Anteil des Bildschirms)
+  function focusRegion() {
+    var L = layout, W = L.width, edge = BASE.edge * L.s;
+    var r = { x0: edge, y0: edge, x1: W - edge, y1: W - edge };
+    if (!mapEl || !mapEl.getBoundingClientRect || typeof window === "undefined") return r;
+    var m = mapEl.getBoundingClientRect(), de = document.documentElement || {};
+    var vw = window.innerWidth || de.clientWidth || 0, vh = window.innerHeight || de.clientHeight || 0;
+    if (!m.width || !vw || !vh) return r;
+    var top = 0;
+    [document.querySelector("header.ihb-nav"), document.getElementById("tagFilterBar")].forEach(function (e) {
+      if (!e) return;
+      var bb = e.getBoundingClientRect();
+      if (bb.height > 0 && bb.top < vh / 2 && bb.bottom > top) top = bb.bottom;
+    });
+    var bottom = sheetMode() ? vh * (1 - SHEET_INFO_MAX) : vh;
+    // was sonst noch auf dem Bildschirm steht und frei bleiben soll: die Zoom-Knoepfe
+    var blocks = [];
+    var zc = document.getElementById("zoomCtl");
+    if (zc && zc.offsetParent !== null) {
+      var zb = zc.getBoundingClientRect();
+      if (zb.width > 0 && zb.height > 0) blocks.push({ x0: zb.left - m.left, y0: zb.top - m.top, x1: zb.right - m.left, y1: zb.bottom - m.top });
+    }
+    return { x0: edge - m.left, x1: vw - m.left - edge, y0: top - m.top + edge / 2, y1: bottom - m.top - edge, blocks: blocks };
+  }
+  // Abstand eines Punkts von einem Rechteck (negativ: darin)
+  function rectGap(x, y, b) {
+    var dx = Math.max(b.x0 - x, 0, x - b.x1), dy = Math.max(b.y0 - y, 0, y - b.y1);
+    if (dx || dy) return Math.sqrt(dx * dx + dy * dy);
+    return -Math.min(x - b.x0, b.x1 - x, y - b.y0, b.y1 - y);
+  }
+  // die konvexe Huelle von Punkten und der Abstand eines Punkts von ihr
+  // (negativ: darin). So zaehlt auch der Faecher zwischen der Idee und ihren
+  // Details als belegt, nicht nur die Kugeln.
+  function convexHull(pts) {
+    var ps = pts.slice().sort(function (a, b) { return a.x - b.x || a.y - b.y; });
+    if (ps.length < 3) return ps;
+    var cr = function (o, a, b) { return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x); };
+    var lo = [], hi = [], i;
+    for (i = 0; i < ps.length; i++) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], ps[i]) <= 0) lo.pop(); lo.push(ps[i]); }
+    for (i = ps.length - 1; i >= 0; i--) { while (hi.length >= 2 && cr(hi[hi.length - 2], hi[hi.length - 1], ps[i]) <= 0) hi.pop(); hi.push(ps[i]); }
+    lo.pop(); hi.pop();
+    return lo.concat(hi);
+  }
+  function hullGap(x, y, hull) {
+    if (hull.length < 3) return Infinity;
+    var inside = true, best = Infinity;
+    for (var i = 0; i < hull.length; i++) {
+      var a = hull[i], b = hull[(i + 1) % hull.length];
+      var ex = b.x - a.x, ey = b.y - a.y, l2 = ex * ex + ey * ey || 1;
+      var t = Math.max(0, Math.min(1, ((x - a.x) * ex + (y - a.y) * ey) / l2));
+      best = Math.min(best, distance(x, y, a.x + t * ex, a.y + t * ey));
+      if (ex * (y - a.y) - ey * (x - a.x) < 0) inside = false;
+    }
+    return inside ? -best : best;
+  }
+  // wie frei ein Kreis (x, y, r) neben der gewaehlten Idee liegt: Kugeln und Faecher
+  function clusterGap(its, hull, x, y, r) {
+    var m = hullGap(x, y, hull) - r;
+    for (var i = 0; i < its.length; i++) m = Math.min(m, distance(x, y, its[i].x, its[i].y) - its[i].r - r);
+    return m;
+  }
+  function regionKey(r) {
+    var v = [r.x0, r.y0, r.x1, r.y1];
+    (r.blocks || []).forEach(function (b) { v.push(b.x0, b.y0, b.x1, b.y1); });
+    return v.map(function (x) { return Math.round(x); }).join(",");
+  }
   // Wohin das Gehirn dreht und wo die gewaehlte Idee steht. Das Gehirn dreht
-  // sie nach vorn, senkrecht ueber oder unter den Hub; dort geht das Glas nicht
-  // hin. Ihr genauer Platz (park) ist so gewaehlt, dass die Krone passt.
+  // sie nach vorn; ihr Platz (park) liegt an einer der vier Seiten des Glases:
+  // dort, wo die Krone gross genug passt und die wenigsten anderen Ideen liegen.
+  // Gleich gute Seiten in dieser Reihenfolge: die, auf der die Idee vor dem
+  // Drehen stand (oben oder unten), dann die Seite, auf der sie stand
+  // (links oder rechts), dann die anderen.
   var plans = {};
+  var CROWN_SIZE_OK = 0.85;   // so viel kleinere Kugeln nimmt man fuer eine freiere Seite in Kauf
   function planFocus(core) {
     if (!core) return null;
     var L = layout, W = L.width, c = W / 2, s = L.s;
     var p = brain.pos[core.id] || [0, 0, 1];
     var yaw = Math.atan2(p[0], p[2]);
     var pitch = view.home ? view.home.pitch : HOME_PITCH;
-    var pr = projectWith(p, yaw, pitch, {});
-    var ext = focusHubExtent();
+    var pr = projectWith(p, yaw, pitch, {}), now = projectWith(p, view.yaw, view.pitch, {});
+    var ext = focusHubExtent(), reg = focusRegion();
     var n = detailSlotsFor(core);
-    var sides = sheetMode() ? [-1] : (pr.y <= c ? [-1, 1] : [1, -1]);   // -1: oberhalb
-    var best = null;
-    sides.forEach(function (side) {
-      if (best && best.ok) return;
-      for (var extra = 0; extra <= W / 2; extra += 8 * s) {
-        var dist = ext.y + L.coreFocus / 2 + 10 * s + extra;
-        var py = c + side * dist;
-        if (py - L.coreFocus / 2 < BASE.edge * s || py + L.coreFocus / 2 > W - BASE.edge * s) break;
-        var cr = crownFor({ x: c, y: py }, n, side < 0 ? -Math.PI / 2 : Math.PI / 2, ext);
-        var cand = { park: { x: c, y: py }, offs: cr.offs, dd: cr.dd, ok: cr.ok, worst: cr.worst };
+    var up = { dx: 0, dy: -1 }, down = { dx: 0, dy: 1 }, left = { dx: -1, dy: 0 }, right = { dx: 1, dy: 0 };
+    var vert = pr.y <= c ? [up, down] : [down, up], hor = now.x <= c ? [left, right] : [right, left];
+    var sides = [vert[0], hor[0], hor[1], vert[1]];
+    var cands = [];
+    sides.forEach(function (sd, order) {
+      var best = null, half = L.coreFocus / 2;
+      for (var extra = 0; extra <= W; extra += 8 * s) {
+        var dist = (sd.dx ? ext.x : ext.y) + half + 10 * s + extra;
+        var px = c + sd.dx * dist, py = c + sd.dy * dist;
+        if (px - half < reg.x0 || px + half > reg.x1 || py - half < reg.y0 || py + half > reg.y1) break;
+        if ((reg.blocks || []).some(function (bk) { return rectGap(px, py, bk) < half; })) continue;
+        var cr = crownFor({ x: px, y: py }, n, Math.atan2(sd.dy, sd.dx), ext, reg);
+        var cand = { park: { x: px, y: py }, offs: cr.offs, dd: cr.dd, ok: cr.ok, worst: cr.worst, rows: cr.rows || 1, order: order, side: sd };
         if (!best || (cand.ok && !best.ok) || (!cand.ok && !best.ok && cand.worst > best.worst)) best = cand;
         if (cand.ok) break;
       }
+      if (best) cands.push(best);
     });
-    if (!best) best = { park: { x: c, y: Math.max(L.coreFocus / 2, c - ext.y - L.coreFocus / 2) }, offs: [], dd: L.focusW, ok: false, worst: -Infinity };
-    best.n = n; best.w = W; best.sheet = sheetMode(); best.hub = L.hub;
+    // wie viele andere Ideen dort laegen (in der Ansicht nach dem Drehen)
+    var others = [];
+    visibleCores().forEach(function (o) {
+      if (o.id === core.id || !brain.pos[o.id]) return;
+      var q = projectWith(brain.pos[o.id], yaw, pitch, {});
+      others.push({ x: q.x, y: q.y, r: RC * q.k });
+    });
+    var crowdOf = function (cd) {
+      var its = clusterItems(cd, cd.park.x, cd.park.y), hull = convexHull(its), k = 0;
+      others.forEach(function (o) { if (clusterGap(its, hull, o.x, o.y, o.r) < 0) k++; });
+      return k;
+    };
+    var best = null, oks = cands.filter(function (cd) { return cd.ok; });
+    // steht die Idee schon (oder ist unterwegs), bleibt sie auf ihrer Seite, solange
+    // die Krone dort passt: aendert sich nur das Mass (das Hub wird im Hochformat
+    // kleiner, das Fenster anders), springt sie nicht auf eine andere Seite
+    var prev = plans[core.id], keep = null;
+    if (prev && prev.side && state.focusedId === core.id && (focusP[core.id] || 0) > 0) {
+      keep = oks.filter(function (cd) { return cd.side.dx === prev.side.dx && cd.side.dy === prev.side.dy; })[0] || null;
+    }
+    if (keep) best = keep;
+    else if (oks.length) {
+      var top = Math.max.apply(null, oks.map(function (cd) { return cd.dd; }));
+      var good = oks.filter(function (cd) { return cd.dd >= top * CROWN_SIZE_OK - 0.01; });
+      good.forEach(function (cd) { cd.crowd = crowdOf(cd); });
+      // ein Bogen vor mehreren (uebersichtlicher), dann die freieste Seite, groessere Kugeln, die Reihenfolge
+      good.sort(function (a2, b2) { return a2.rows - b2.rows || a2.crowd - b2.crowd || b2.dd - a2.dd || a2.order - b2.order; });
+      best = good[0];
+    } else {
+      cands.forEach(function (cd) { if (!best || cd.worst > best.worst) best = cd; });
+    }
+    if (!best) best = { park: { x: c, y: Math.max(L.coreFocus / 2, c - ext.y - L.coreFocus / 2) }, offs: [], dd: L.focusW, ok: false, worst: -Infinity, rows: 1, side: up };
+    best.cands = cands.map(function (cd) { return { side: cd.side.dx + "," + cd.side.dy, ok: cd.ok, dd: Math.round(cd.dd), rows: cd.rows, crowd: cd.crowd, worst: Math.round(cd.worst) }; });
+    best.n = n; best.w = W; best.sheet = sheetMode(); best.hub = L.hub; best.rk = regionKey(reg); best.reg = reg;
     best.view = { yaw: yaw, pitch: pitch };
     plans[core.id] = best;
     return best.view;
   }
+  // die Kugeln der gewaehlten Idee und ihrer Krone, wenn die Idee bei (x, y) steht
+  function clusterItems(pl, x, y) {
+    var its = [{ x: x, y: y, r: layout.coreFocus / 2 }];
+    (pl.offs || []).forEach(function (o) { its.push({ x: x + o.dx, y: y + o.dy, r: pl.dd / 2 }); });
+    return its;
+  }
+  // v5.8: Ideen unter der gewaehlten Idee oder ihrer Krone weichen aus, so weit,
+  // dass sie frei liegen (vom Mittelpunkt der Krone weg); amt: wie weit der Fokus ist
+  var FOCUS_ROOM = 8;   // so viel Luft bleibt (bei voller Groesse)
+  var focusMoved = {};
+  function makeFocusRoom(next, amt) {
+    focusMoved = {};
+    var fid = state.focusedId, pl = fid !== null ? plans[fid] : null, fq = fid !== null ? next[fid] : null;
+    if (!pl || !fq || !(amt > 0)) return;
+    var L = layout, need = FOCUS_ROOM * L.s, its = clusterItems(pl, fq.x, fq.y), hull = convexHull(its), cx = 0, cy = 0;
+    its.forEach(function (it) { cx += it.x / its.length; cy += it.y / its.length; });
+    var clear = function (x, y, r) { return clusterGap(its, hull, x, y, r); };
+    Object.keys(next).forEach(function (id) {
+      var q = next[id];
+      if (id === fid || /^g?d:/.test(id) || q.fp > 0) return;
+      if (clear(q.x, q.y, q.r) >= need) return;
+      var dx = q.x - cx, dy = q.y - cy, len = Math.sqrt(dx * dx + dy * dy);
+      var ux = len > 0.5 ? dx / len : 0, uy = len > 0.5 ? dy / len : 1;
+      var lo = len, hi = len + 2 * L.width;
+      for (var k = 0; k < 30; k++) {
+        var mid = (lo + hi) / 2;
+        if (clear(cx + ux * mid, cy + uy * mid, q.r) >= need) hi = mid; else lo = mid;
+      }
+      var sx = (cx + ux * hi - q.x) * amt, sy = (cy + uy * hi - q.y) * amt;
+      q.x += sx; q.y += sy; q.sx = (q.sx || 0) + sx; q.sy = (q.sy || 0) + sy;
+      focusMoved[id] = true;
+    });
+  }
   function ensurePlan(core) {
     var pl = plans[core.id];
-    if (pl && pl.n === detailSlotsFor(core) && pl.w === layout.width && pl.sheet === sheetMode() && Math.abs(pl.hub - layout.hub) < 0.5) return pl;
+    if (pl && pl.n === detailSlotsFor(core) && pl.w === layout.width && pl.sheet === sheetMode() && Math.abs(pl.hub - layout.hub) < 0.5 &&
+      pl.rk === regionKey(focusRegion())) return pl;
     planFocus(core);
     return plans[core.id];
   }
@@ -3206,6 +3353,7 @@
       next[GHOST_ID] = { x: pr.x, y: pr.y, r: RC * pr.k * (1 - 0.3 * amt), z: pr.z, fog: fogAlpha(pr.d), k: pr.k, fp: 0 };
     }
     if (roomAnim.p > 0) makeRoom(next, roomAnim.p); else roomMoved = {};
+    makeFocusRoom(next, amt);   // v5.8: was unter der gewaehlten Idee laege, weicht aus
     cores.forEach(function (core) {
       var cq = next[core.id];
       if (!cq) return;
@@ -7548,7 +7696,11 @@
     if (editBtn) { enterEdit("core", null, editBtn.getAttribute("data-core-id")); return; }
     var coreBubble = target.closest('[data-role="core"]');
     if (coreBubble) {
-      toggleFocus(coreBubble.getAttribute("data-core-id"));
+      // v5.8: ist ein Detail gewaehlt, zeigt die Kernidee wieder sich selbst;
+      // erst der naechste Klick schliesst
+      var cbId = coreBubble.getAttribute("data-core-id"), sel = state.selectedDetail;
+      if (state.focusedId === cbId && sel && sel.coreId === cbId) { selectDetail(cbId, sel.detailId); return; }
+      toggleFocus(cbId);
       return;
     }
     var detailBubble = target.closest('[data-role="detail"]');
@@ -9573,11 +9725,12 @@
   }, true);
 
   // ---------- Mails hineinziehen (v5.4) ----------
-  // Eine Mail als Datei (.eml) wird ein Gedanke im Eingang, auf einer Kernidee
+  // Eine Mail als Datei (.eml, ab v5.7 auch .msg aus Outlook) wird ein Gedanke im Eingang, auf einer Kernidee
   // losgelassen ein Detail von ihr, auf dem + eine neue Kernidee. Der Betreff wird
   // der Text; Absender, Datum, Anhaenge und der Mailtext stehen in der
   // Beschreibung. Gelesen wird hier im Browser, nichts verlaesst das Geraet.
   var MAIL_TEXT_MAX = 4000, MAIL_SUBJECT_MAX = 160;
+  var MAIL_NO_FILE = "Es kam keine Datei an. Aus Outlook die Mail zuerst sichern (auf den Schreibtisch ziehen), dann diese Datei hierher ziehen.";
   function binOf(bytes) {
     var out = "";
     for (var i = 0; i < bytes.length; i += 8192) out += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
@@ -9704,6 +9857,303 @@
       link: mid ? "message://%3C" + encodeURIComponent(mid) + "%3E" : ""
     };
   }
+  // ---- v5.7: Outlook-Mails (.msg) ----
+  // Eine .msg ist ein Verbunddokument (Compound File Binary): kleine Dateien in
+  // Sektoren, verkettet ueber eine Tabelle (FAT), kleine Stroeme im Mini-Strom.
+  // Gelesen wird nur, nichts geschrieben; jede Kette ist gegen Schleifen gesichert.
+  var CFB_SIG = [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1];
+  function isCfb(u8) {
+    if (!u8 || u8.length < 512) return false;
+    for (var i = 0; i < 8; i++) if (u8[i] !== CFB_SIG[i]) return false;
+    return true;
+  }
+  function readCfb(u8) {
+    var dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+    var u32 = function (o) { return dv.getUint32(o, true); };
+    var ss = 1 << dv.getUint16(30, true), mss = 1 << dv.getUint16(32, true);
+    if (ss !== 512 && ss !== 4096) throw new Error("Sektorgroesse");
+    var nSec = Math.floor((u8.length - ss) / ss) + 1;   // grob, nur als Obergrenze
+    var at = function (sec) { return (sec + 1) * ss; };
+    var per = ss / 4, fatSecs = [], i, d;
+    for (i = 0; i < 109; i++) { d = u32(76 + i * 4); if (d < 0xFFFFFFFA) fatSecs.push(d); }
+    var dif = u32(68), seen = 0;
+    while (dif < 0xFFFFFFFA && seen++ < nSec) {
+      for (i = 0; i < per - 1; i++) { d = u32(at(dif) + i * 4); if (d < 0xFFFFFFFA) fatSecs.push(d); }
+      dif = u32(at(dif) + (per - 1) * 4);
+    }
+    var fat = [];
+    fatSecs.forEach(function (s) { for (var k = 0; k < per && at(s) + k * 4 + 4 <= u8.length; k++) fat.push(u32(at(s) + k * 4)); });
+    var chain = function (start, table) {
+      var out = [], s = start, guard = table.length + 1;
+      while (s < 0xFFFFFFFA && s < table.length && guard-- > 0) { out.push(s); s = table[s]; }
+      return out;
+    };
+    var join = function (secs, size, unit, src, base) {   // Sektoren hintereinander, auf die Groesse gekuerzt
+      var buf = new Uint8Array(Math.min(size, secs.length * unit)), pos = 0;
+      for (var k = 0; k < secs.length && pos < buf.length; k++) {
+        var off = base(secs[k]), n = Math.min(unit, buf.length - pos);
+        buf.set(src.subarray(off, off + n), pos);
+        pos += unit;
+      }
+      return buf;
+    };
+    var big = function (start, size) { return join(chain(start, fat), size, ss, u8, at); };
+    // Verzeichnis: 128 Bytes je Eintrag
+    var dirSecs = chain(u32(48), fat), dir = [];
+    dirSecs.forEach(function (s) {
+      for (var o = at(s); o + 128 <= at(s) + ss && o + 128 <= u8.length; o += 128) {
+        var nl = Math.min(64, dv.getUint16(o + 64, true)), name = "";
+        for (var c = 0; c + 2 < nl; c += 2) name += String.fromCharCode(dv.getUint16(o + c, true));
+        dir.push({ name: name, type: u8[o + 66], left: u32(o + 68), right: u32(o + 72), child: u32(o + 76), start: u32(o + 116), size: u32(o + 120) });
+      }
+    });
+    if (!dir.length || dir[0].type !== 5) throw new Error("Verzeichnis");
+    var cutoff = u32(56) || 4096;
+    var miniFat = [];
+    chain(u32(60), fat).forEach(function (s) { for (var k = 0; k < per; k++) miniFat.push(u32(at(s) + k * 4)); });
+    var mini = big(dir[0].start, dir[0].size);
+    var stream = function (e) {
+      if (e.size >= cutoff) return big(e.start, e.size);
+      return join(chain(e.start, miniFat), e.size, mss, mini, function (q) { return q * mss; });
+    };
+    // Kinder eines Speichers: der Rot-Schwarz-Baum ab "child", jeder Eintrag einmal
+    var kids = function (idx) {
+      var out = {}, todo = [dir[idx] ? dir[idx].child : 0xFFFFFFFF], done = {};
+      while (todo.length) {
+        var k = todo.pop();
+        if (k >= dir.length || done[k]) continue;
+        done[k] = true;
+        var e = dir[k];
+        out[e.name.toLowerCase()] = k;
+        todo.push(e.left, e.right);
+      }
+      return out;
+    };
+    return { dir: dir, kids: kids, stream: stream };
+  }
+  // Codepage-Nummer (MAPI) -> Name fuer TextDecoder
+  function cpName(cp) {
+    var map = { 65001: "utf-8", 20127: "us-ascii", 28591: "iso-8859-1", 932: "shift_jis", 936: "gbk", 949: "euc-kr", 950: "big5",
+      866: "ibm866", 874: "windows-874", 20866: "koi8-r", 21866: "koi8-u", 50220: "iso-2022-jp", 51932: "euc-jp", 54936: "gb18030", 1200: "utf-16le" };
+    if (map[cp]) return map[cp];
+    if (cp >= 1250 && cp <= 1258) return "windows-" + cp;
+    if (cp >= 28592 && cp <= 28605) return "iso-8859-" + (cp - 28590);
+    return "windows-1252";
+  }
+  // ohne Codepage-Angabe: aus der Sprache der Nachricht (LCID) die Windows-Codepage
+  function lcidCp(lcid) {
+    var p = lcid & 0x3FF, cp = { 0x11: 932, 0x12: 949, 0x1E: 874, 0x2A: 1258, 0x08: 1253, 0x1F: 1254, 0x0D: 1255, 0x01: 1256,
+      0x19: 1251, 0x22: 1251, 0x02: 1251, 0x23: 1251, 0x2F: 1251, 0x15: 1250, 0x05: 1250, 0x1B: 1250, 0x0E: 1250, 0x1A: 1250,
+      0x24: 1250, 0x18: 1250, 0x1C: 1250, 0x25: 1257, 0x26: 1257, 0x27: 1257 }[p];
+    if (p === 0x04) cp = lcid === 0x0804 || lcid === 0x1004 ? 936 : 950;
+    if (lcid === 0x0C1A || lcid === 0x1C1A) cp = 1251;
+    return cpName(cp || 1252);
+  }
+  function utf16(u8) {
+    var s = "";
+    for (var i = 0; i + 1 < u8.length; i += 2) s += String.fromCharCode(u8[i] | (u8[i + 1] << 8));
+    return s.replace(/\u0000/g, "");
+  }
+  // Eigenschaften eines Speichers (Nachricht, Anhang): Stroeme __substg1.0_IIIITTTT
+  // und feste Werte (Zahlen, Zeiten) im Strom __properties_version1.0
+  function msgProps(cfb, idx, headLen) {
+    var kids = cfb.kids(idx), props = { _kids: kids, _idx: idx }, fixed = {};
+    var pk = kids["__properties_version1.0"];
+    if (pk !== undefined) {
+      var p = cfb.stream(cfb.dir[pk]);
+      var dv = new DataView(p.buffer, p.byteOffset, p.byteLength);
+      for (var o = headLen; o + 16 <= p.length; o += 16) {
+        var tag = dv.getUint32(o, true), type = tag & 0xFFFF, id = tag >>> 16;
+        if (type === 0x0003) fixed[id] = dv.getInt32(o + 8, true);
+        else if (type === 0x000B) fixed[id] = !!dv.getUint16(o + 8, true);
+        else if (type === 0x0040) {
+          var ms = dv.getUint32(o + 12, true) * 429496.7296 + dv.getUint32(o + 8, true) / 10000 - 11644473600000;
+          if (ms > 0) fixed[id] = new Date(ms).toISOString();
+        }
+      }
+    }
+    props.fixed = fixed;
+    props.raw = function (id) {   // { type, bytes } oder null
+      var hex = ("0000" + id.toString(16).toUpperCase()).slice(-4);
+      var types = ["001F", "001E", "0102"];
+      for (var t = 0; t < types.length; t++) {
+        var k = kids[("__substg1.0_" + hex + types[t]).toLowerCase()];
+        if (k !== undefined) return { type: types[t], bytes: cfb.stream(cfb.dir[k]) };
+      }
+      return null;
+    };
+    return props;
+  }
+  function msgText(props, id, cs) {
+    var r = props.raw(id);
+    if (!r) return "";
+    if (r.type === "001F") return utf16(r.bytes);
+    if (r.type === "001E") return decodeBin(binOf(r.bytes), cs).replace(/\u0000/g, "");
+    return "";
+  }
+  // Komprimiertes RTF (MS-OXRTFCP, "LZFu"); "MELA" heisst unkomprimiert
+  var RTF_PREBUF = "{\\rtf1\\ansi\\mac\\deff0\\deftab720{\\fonttbl;}{\\f0\\fnil \\froman \\fswiss \\fmodern \\fscript \\fdecor MS Sans SerifSymbolArialTimes New RomanCourier{\\colortbl\\red0\\green0\\blue0\r\n\\par \\pard\\plain\\f0\\fs20\\b\\i\\u\\tab\\tx";
+  function unLzfu(u8) {
+    if (!u8 || u8.length < 16) return "";
+    var dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+    var comp = dv.getUint32(0, true), raw = dv.getUint32(4, true), magic = dv.getUint32(8, true);
+    var end = Math.min(u8.length, comp + 4);
+    if (magic === 0x414C454D) return binOf(u8.subarray(16, Math.min(u8.length, 16 + raw)));
+    if (magic !== 0x75465A4C) return "";
+    var dict = new Uint8Array(4096), w = 0, out = [], i;
+    for (i = 0; i < RTF_PREBUF.length; i++) dict[w++] = RTF_PREBUF.charCodeAt(i);
+    var pos = 16;
+    while (pos < end) {
+      var ctrl = u8[pos++];
+      for (var bit = 0; bit < 8 && pos < end; bit++) {
+        if (ctrl & (1 << bit)) {
+          if (pos + 1 >= end) { pos = end; break; }
+          var ref = (u8[pos] << 8) | u8[pos + 1];
+          pos += 2;
+          var off = ref >> 4, len = (ref & 15) + 2;
+          if (off === w) { pos = end; break; }   // Ende
+          for (var k = 0; k < len; k++) {
+            var ch = dict[(off + k) & 4095];
+            out.push(ch);
+            dict[w] = ch;
+            w = (w + 1) & 4095;
+          }
+        } else {
+          var b = u8[pos++];
+          out.push(b);
+          dict[w] = b;
+          w = (w + 1) & 4095;
+        }
+        if (out.length > raw + 64) { pos = end; break; }
+      }
+    }
+    return binOf(new Uint8Array(out.slice(0, raw || out.length)));
+  }
+  // RTF als Text: Absaetze bleiben; Kopf, Tabellen fuer Schriften und Farben, Bilder
+  // fallen weg; \'hh nach der Codepage, \uN. Outlook packt HTML-Mails oft in RTF
+  // (\fromhtml1): dann wird das HTML aus den \*\htmltag-Gruppen und dem Text
+  // dazwischen zurueckgewonnen; was zwischen \htmlrtf und \htmlrtf0 steht, gehoert
+  // nur zur RTF-Fassung und faellt weg.
+  var RTF_SKIP = /^(fonttbl|colortbl|stylesheet|info|pict|object|header|footer|headerl|headerr|footerl|footerr|listtable|listoverridetable|rsidtbl|generator|themedata|colorschememapping|latentstyles|datastore|xmlnstbl|mmathPr|filetbl|revtbl|pgdsctbl|fldinst)$/;
+  var RTF_CHARS = { par: "\n", line: "\n", sect: "\n", page: "\n", row: "\n", tab: "\t", cell: "\t", emdash: "—", endash: "–", bullet: "•",
+    lquote: "‘", rquote: "’", ldblquote: "„", rdblquote: "“" };
+  function rtfText(rtf, fallbackCs) {
+    var cpm = rtf.match(/\\ansicpg(\d+)/), cs = cpm ? cpName(+cpm[1]) : (fallbackCs || "windows-1252");
+    var html = /\\fromhtml1/.test(rtf.slice(0, 400));
+    // Schriften mit eigenem Zeichensatz (\fcharset, etwa chinesisch oder koreanisch)
+    var fcs = {}, fm, fre = /\{\\f(\d+)[^{}]*?\\fcharset(\d+)/g, FCHARSET = { 128: 932, 129: 949, 134: 936, 136: 950, 161: 1253, 162: 1254,
+      163: 1258, 177: 1255, 178: 1256, 186: 1257, 204: 1251, 222: 874, 238: 1250 };
+    while ((fm = fre.exec(rtf.slice(0, 20000)))) if (FCHARSET[+fm[2]]) fcs[fm[1]] = cpName(FCHARSET[+fm[2]]);
+    var out = "", bytes = "", bytesCs = cs, stack = [], g = { skip: false, uc: 1, rtfOnly: false, tag: false, font: -1 }, pend = 0, i = 0, n = rtf.length;
+    var flush = function () { if (bytes) { out += decodeBin(bytes, bytesCs); bytes = ""; } };
+    var shown = function () { return !g.skip && (!g.rtfOnly || g.tag); };
+    var put = function (s) { if (shown()) { flush(); out += s; } };
+    var byte = function (b) {
+      if (!shown()) return;
+      var c = fcs[g.font] || cs;
+      if (bytes && c !== bytesCs) flush();
+      bytesCs = c;
+      bytes += b;
+    };
+    while (i < n) {
+      var c = rtf[i];
+      if (c === "{") { stack.push(g); g = { skip: g.skip, uc: g.uc, rtfOnly: g.rtfOnly, tag: g.tag, font: g.font }; i++; continue; }
+      if (c === "}") { g = stack.pop() || g; pend = 0; i++; continue; }
+      if (c === "\\") {
+        var m = /^\\([a-zA-Z]+)(-?\d+)? ?/.exec(rtf.slice(i, i + 40));
+        if (m) {
+          i += m[0].length;
+          var w = m[1], arg = m[2] !== undefined ? +m[2] : null;
+          if (pend > 0) { pend--; continue; }
+          if (w === "htmlrtf") { g.rtfOnly = arg !== 0; continue; }
+          if (w === "f" && arg !== null && !g.skip) { g.font = arg; continue; }
+          if (RTF_SKIP.test(w)) { g.skip = true; continue; }
+          if (RTF_CHARS[w]) put(RTF_CHARS[w]);
+          else if (w === "uc") g.uc = arg || 0;
+          else if (w === "u") { put(String.fromCharCode(arg < 0 ? arg + 65536 : arg)); pend = g.uc; }
+          continue;
+        }
+        var nx = rtf[i + 1];
+        if (nx === "'") {
+          var hx = rtf.slice(i + 2, i + 4);
+          i += 4;
+          if (pend > 0) { pend--; continue; }
+          byte(String.fromCharCode(parseInt(hx, 16) || 0));
+          continue;
+        }
+        if (nx === "*") {
+          var t = /^\\\*\\htmltag\d* ?/.exec(rtf.slice(i, i + 24));
+          if (html && t) { g.tag = true; g.rtfOnly = false; i += t[0].length; }
+          else { g.skip = true; i += 2; }
+          continue;
+        }
+        i += 2;
+        if (pend > 0) { pend--; continue; }
+        if (nx === "~") put(" ");
+        else if (nx === "\r" || nx === "\n") put("\n");
+        else if (nx !== "-" && nx !== "_" && nx !== undefined) put(nx);
+        continue;
+      }
+      i++;
+      if (c === "\r" || c === "\n") continue;
+      if (pend > 0) { pend--; continue; }
+      byte(c);
+    }
+    flush();
+    return html ? mailHtmlText(out) : out;
+  }
+  function parseMsg(u8) {
+    var cfb = readCfb(u8);
+    var top = msgProps(cfb, 0, 32), fx = top.fixed;
+    // Codepage der 8-Bit-Texte: PR_MESSAGE_CODEPAGE, sonst nach der Sprache; HTML nach PR_INTERNET_CPID
+    var cs = fx[0x3FFD] ? cpName(fx[0x3FFD]) : fx[0x3FF1] ? lcidCp(fx[0x3FF1]) : "", htmlCs = fx[0x3FDE] ? cpName(fx[0x3FDE]) : cs;
+    var t = function (id) { return msgText(top, id, cs).trim(); };
+    var cls = t(0x001A);
+    var name = t(0x0C1A) || t(0x0042), mail = [t(0x5D01), t(0x0C1F), t(0x0065), t(0x5D02)].filter(function (x) { return /@/.test(x); })[0] || "";
+    var from = name && mail && name.toLowerCase() !== mail.toLowerCase() ? name + " <" + mail + ">" : name || mail;
+    var text = t(0x1000), files = [], note = "";
+    if (!text) {
+      var h = top.raw(0x1013);
+      if (h) {
+        var hb = h.type === "001F" ? utf16(h.bytes) : binOf(h.bytes);
+        if (h.type !== "001F") { var mc = hb.match(/<meta[^>]+charset=["']?([\w-]+)/i); hb = decodeBin(hb, mc ? mc[1] : htmlCs); }
+        text = mailHtmlText(hb);
+      }
+    }
+    if (!text) {
+      var r = top.raw(0x1009);
+      if (r && r.type === "0102") text = rtfText(unLzfu(r.bytes), cs);
+    }
+    text = String(text || "").replace(/\u0000/g, "");
+    // Anhaenge: Speicher __attach_version1.0_#..., versteckte (Bilder im Text) zaehlen nicht
+    Object.keys(top._kids).sort().forEach(function (k) {
+      if (k.indexOf("__attach_version1.0_#") !== 0) return;
+      var a = msgProps(cfb, top._kids[k], 8), af = a.fixed;
+      var an = msgText(a, 0x3707, cs) || msgText(a, 0x3704, cs) || msgText(a, 0x3001, cs);
+      var method = af[0x3705];
+      if (/smime/i.test(cls) && /\.p7m$|^smime/i.test(an)) {
+        var data = a.raw(0x3701);
+        if (/multipartsigned/i.test(cls) && data && data.type === "0102" && !text) {
+          var inner = parseEml(binOf(data.bytes));
+          text = inner.text;
+          files = files.concat(inner.files);
+        } else if (!/multipartsigned/i.test(cls)) note = "Die Mail ist verschlüsselt – nur der Betreff ließ sich lesen.";
+        return;
+      }
+      if (af[0x7FFE] === true) return;
+      files.push(an.trim() || (method === 5 ? "weitergeleitete Mail" : "Anhang"));
+    });
+    var subject = t(0x0037);
+    if (!subject && !text && !from) throw new Error("keine Mail");
+    return {
+      subject: mailTidy(subject).replace(/\s+/g, " "),
+      from: from.replace(/"/g, "").replace(/\s+/g, " ").trim(),
+      date: fx[0x0039] || fx[0x0E06] || null,
+      text: mailTidy(note ? note + (text ? "\n\n" + text : "") : text),
+      files: files,
+      link: ""
+    };
+  }
   function mailToEntry(mail) {
     var lines = [];
     if (mail.from) lines.push("Mail von " + mail.from);
@@ -9714,12 +10164,15 @@
     var body = mail.text.length > MAIL_TEXT_MAX ? mail.text.slice(0, MAIL_TEXT_MAX - 1).replace(/\s+\S*$/, "") + " …" : mail.text;
     return { text: shortText(mail.subject || "(Mail ohne Betreff)", MAIL_SUBJECT_MAX), notes: lines.join("\n") + (body ? "\n\n" + body : "") };
   }
-  function isMailFile(f) { return /\.eml$/i.test(f.name || "") || /^message\/rfc822/i.test(f.type || ""); }
+  function isMailFile(f) { return /\.(eml|msg)$/i.test(f.name || "") || /^message\/rfc822|vnd\.ms-outlook/i.test(f.type || ""); }
+  // .msg erkennt man am Inhalt (Verbunddokument), nicht nur am Namen
+  function readMailBytes(u8) { return isCfb(u8) ? parseMsg(u8) : parseEml(binOf(u8)); }
+  // jede Datei fuer sich: eine unlesbare wird null und haelt die anderen nicht auf
   function readMails(files) {
     var mails = (files || []).filter(isMailFile);
     return Promise.all(mails.map(function (f) {
       var buf = f.arrayBuffer ? f.arrayBuffer() : new Response(f).arrayBuffer();
-      return buf.then(function (ab) { return parseEml(binOf(new Uint8Array(ab))); });
+      return buf.then(function (ab) { return readMailBytes(new Uint8Array(ab)); }).then(null, function () { return null; });
     }));
   }
   function addMailToInbox(e) {
@@ -9728,8 +10181,12 @@
   function plural(n, one, many) { return n === 1 ? one : n + " " + many; }
   // Ziel: { coreId } | { newCore: true } | null (Eingang); from: Ort des Loslassens
   function importMails(mails, target, from) {
-    var entries = (mails || []).map(mailToEntry), msg = "", toInbox = [];
-    if (!entries.length) { mailToast("Keine Mail erkannt – IdeaHub liest Mails als .eml-Datei."); return ""; }
+    var bad = (mails || []).filter(function (m) { return !m; }).length;
+    var entries = (mails || []).filter(Boolean).map(mailToEntry), msg = "", toInbox = [];
+    if (!entries.length) {
+      mailToast(bad ? (bad === 1 ? "Die Mail ließ sich nicht lesen." : "Die Mails ließen sich nicht lesen.") : "Keine Mail erkannt – IdeaHub liest Mails als .eml- oder .msg-Datei.");
+      return "";
+    }
     var now = new Date().toISOString();
     var core = target && target.coreId ? coreById(target.coreId) : null;
     if (core) {
@@ -9756,6 +10213,7 @@
       toInbox = entries;
       msg = plural(entries.length, "Mail", "Mails") + " im Eingang";
     }
+    if (bad) msg += " · " + plural(bad, "eine Datei", "Dateien") + " nicht lesbar";
     toInbox.forEach(addMailToInbox);
     if (toInbox.length) {
       persistInbox();
@@ -9847,6 +10305,7 @@
     var tgt = mailDropTarget(e.clientX, e.clientY), from = { x: e.clientX, y: e.clientY };
     endMailDrag();
     var files = Array.prototype.slice.call((e.dataTransfer && e.dataTransfer.files) || []);
+    if (!files.length) { mailToast(MAIL_NO_FILE); return; }
     readMails(files).then(function (mails) { importMails(mails, tgt, from); },
       function () { mailToast("Die Mail ließ sich nicht lesen."); });
   });
@@ -9967,7 +10426,8 @@
     visibleCores: visibleCores, clusterGroups: clusterGroups, setCluster: setCluster, cloudInfo: cloudInfo,
     doneOf: doneOf, coreDone: coreDone, DONE_SCALE: DONE_SCALE,
     editorBig: editorBig, undoLastEdit: undoLastEdit, saveEditorDraft: saveEditorDraft,
-    parseEml: function (text) { return parseEml(String(text)); }, mailToEntry: mailToEntry, importMails: importMails,
+    parseEml: function (text) { return parseEml(String(text)); }, parseMsg: function (bytes) { return parseMsg(new Uint8Array(bytes)); },
+    readMailBytes: function (bytes) { return readMailBytes(new Uint8Array(bytes)); }, unLzfu: function (bytes) { return unLzfu(new Uint8Array(bytes)); }, rtfText: rtfText, mailToEntry: mailToEntry, importMails: importMails,
     assignInboxToCore: assignInboxToCore, assignInboxToNewCore: assignInboxToNewCore,
     crossLinks: crossLinks, linkPath: linkPath, setShowLinks: setShowLinks, paletteFor: paletteFor, hexToRgbTriple: hexToRgbTriple,
     getLayout: function () { return layout; },
@@ -9978,7 +10438,7 @@
     turnState: function () { return { auto: autoWanted(), amt: auto.amt, vy: spin.vy, vp: spin.vp, dragging: !!(turnPtr && turnPtr.moved), pinch: !!pinch, idle: Date.now() - lastInteract }; },
     AUTO_IDLE: AUTO_IDLE,
     viewCost: viewCost, projectWith: projectWith, drawn: function () { return P2; },
-    plan: function (id) { return plans[id] || null; }, crownClearance: crownClearance, focusHubExtent: focusHubExtent,
+    plan: function (id) { return plans[id] || null; }, focusRegion: focusRegion, focusMoved: function () { return Object.keys(focusMoved); }, crownClearance: crownClearance, focusHubExtent: focusHubExtent,
     tweenActive: function () { return tweenActive() || (!!animRaf && !spinning()); },
     setZoom: setZoom, homeView: homeView, frame: frame,
     turnTo: function (yaw, pitch) { view.yaw = yaw; if (pitch !== undefined) view.pitch = pitch; frame(); },
