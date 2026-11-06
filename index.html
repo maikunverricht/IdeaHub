@@ -611,10 +611,11 @@
   body[data-theme="minimal"] .ihb-tagsuggest-chip {
     background: rgba(20,22,45,0.04); border-color: rgba(20,22,45,0.25); color: #33374f;
   }
-  .ihb-editor-cols { display: flex; gap: 14px; align-items: flex-start; }
-  .ihb-editor-main { flex: 1; min-width: 0; }
-  .ihb-editor-side { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
-  .ihb-editor-side .ihb-fieldlabel { margin-top: 0; }
+  /* v5.5: schmal untereinander, breit links die Felder und rechts die Beschreibung */
+  .ihb-editor-cols { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "a" "n" "b"; column-gap: 26px; }
+  .ihb-editor-cols.is-wide { grid-template-columns: minmax(220px, 1fr) minmax(0, 1.55fr); grid-template-areas: "a n" "b n"; grid-template-rows: auto 1fr; align-items: start; }
+  .ihb-ed-a { grid-area: a; min-width: 0; } .ihb-ed-n { grid-area: n; min-width: 0; } .ihb-ed-b { grid-area: b; min-width: 0; }
+  .ihb-editor-cols.is-wide .ihb-ed-n > .ihb-fieldrow:first-child { margin-top: 0; }
   /* icons on the left, colours on the right — each a single vertical strip */
   .ihb-iconpicker { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; scrollbar-width: none; }
   .ihb-iconpicker::-webkit-scrollbar { display: none; }
@@ -1414,24 +1415,35 @@
   }
   body[data-theme] .ihb-notesbig-btn:hover { border-color: var(--line-hi); color: var(--text); }
   @media (hover: none) { body[data-theme] .ihb-notesbig-btn { height: 32px; padding: 0 12px; font-size: 13px; } .ihb-fieldrow { margin-top: calc(8px * var(--dsc, 1)); } }
-  /* schmaler Editor (Glas, Handy): Symbol und Farbe als Zeilen unter den Tags,
-     die Beschreibung bekommt die volle Breite */
-  .ihb-editor-cols.is-narrow { flex-direction: column; align-items: stretch; gap: 0; }
-  .ihb-editor-cols.is-narrow > .ihb-editor-main { order: 0; width: 100%; }
-  .ihb-editor-cols.is-narrow > .ihb-editor-side { order: 1; align-items: flex-start; }
-  .ihb-editor-cols.is-narrow > .ihb-editor-side .ihb-fieldlabel { margin-top: calc(14px * var(--dsc, 1)); }
-  .ihb-editor-cols.is-narrow .ihb-iconpicker, .ihb-editor-cols.is-narrow .ihb-colorpicker { flex-direction: row; flex-wrap: wrap; align-self: stretch; max-height: none; overflow: visible; }
+  /* v5.5: Symbol und Farbe zugeklappt, mit Vorschau; aufgeklappt je eine Zeile */
+  .ihb-look { margin-top: calc(14px * var(--dsc, 1)); border-top: 1px solid var(--line, rgba(255,255,255,.1)); }
+  .ihb-look > summary { list-style: none; display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 10px 0 4px; min-height: 32px; }
+  .ihb-look > summary::-webkit-details-marker { display: none; }
+  .ihb-look > summary .ihb-fieldlabel { margin: 0; }
+  .ihb-look-preview { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; color: var(--text-2); font-size: 12px; }
+  .ihb-look-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px var(--line-strong); }
+  .ihb-look-dot.auto { background: transparent; border: 1px dashed var(--text-3); box-shadow: none; }
+  .ihb-look-chev { width: 7px; height: 7px; border-right: 1.5px solid var(--text-3); border-bottom: 1.5px solid var(--text-3); transform: rotate(45deg) translateY(-2px); flex: none; margin: 0 2px 0 4px; }
+  body[data-motion="on"] .ihb-look-chev { transition: transform .2s ease; }
+  .ihb-look[open] .ihb-look-chev { transform: rotate(225deg) translateY(-1px); }
+  .ihb-look-body .ihb-fieldlabel { margin-top: calc(8px * var(--dsc, 1)); }
+  .ihb-look .ihb-iconpicker, .ihb-look .ihb-colorpicker { flex-direction: row; flex-wrap: wrap; max-height: none; overflow: visible; }
   @media (hover: none) {
-    /* am Touch-Geraet je eine Zeile zum Wischen: das Blatt bleibt kurz */
-    .ihb-editor-cols.is-narrow .ihb-iconpicker, .ihb-editor-cols.is-narrow .ihb-colorpicker {
+    /* am Touch-Geraet je eine Zeile zum Wischen */
+    .ihb-look .ihb-iconpicker, .ihb-look .ihb-colorpicker {
       flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding: 2px 2px 4px; }
-    .ihb-editor-cols.is-narrow .ihb-iconpicker > *, .ihb-editor-cols.is-narrow .ihb-colorpicker > * { flex: none; }
-    .ihb-editor-cols.is-narrow .ihb-colorpicker::-webkit-scrollbar { display: none; }
+    .ihb-look .ihb-iconpicker > *, .ihb-look .ihb-colorpicker > * { flex: none; }
+    .ihb-look .ihb-colorpicker::-webkit-scrollbar { display: none; }
   }
-  /* im Blatt bleibt Speichern unten stehen, auch wenn der Editor scrollt */
-  body[data-theme] .ihb-dialogcard .ihb-editor-saverow { position: sticky; bottom: -20px; z-index: 2; margin: 4px -20px -20px; padding: 8px 20px 20px;
-    background: linear-gradient(to bottom, rgba(0,0,0,0), var(--surface-solid) 8px); }
-  /* grosses Schreibfeld: mittig nach Bildschirmgroesse */
+  /* die Kopfzeile mit dem x bleibt beim Scrollen stehen, im Glas und im Blatt */
+  #hubDisplayBody > .ihb-display-head { position: sticky; top: calc(-1 * var(--bpy, 0px)); z-index: 3;
+    margin: calc(-1 * var(--bpy, 0px)) calc(-1 * var(--bpx, 0px)) 8px; padding: var(--bpy, 0px) var(--bpx, 0px) 6px;
+    background: rgba(12,17,24,.62); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-radius: inherit; }
+  body[data-theme="minimal"] #hubDisplayBody > .ihb-display-head { background: rgba(250,251,253,.78); }
+  body[data-theme] .ihb-dialogcard .ihb-sheet-body > .ihb-display-head { position: sticky; top: -20px; z-index: 3; margin: -20px -20px 8px; padding: 22px 20px 8px;
+    background: var(--surface-solid); }
+  /* zum Schreiben geht das Blatt bis fast oben */
+  body[data-theme] .ihb-dialogsheet.ihb-sheet-edit .ihb-dialogcard { top: calc(var(--vvt, 0px) + max(10px, env(safe-area-inset-top, 0px))); max-height: none; height: auto; }  /* grosses Schreibfeld: mittig nach Bildschirmgroesse */
   #notesBig { z-index: 60; }
   body[data-theme] #notesBig { background: rgba(4,7,11,.40); }
   body[data-theme="minimal"] #notesBig { background: rgba(30,40,60,.16); }
@@ -1547,6 +1559,35 @@
   body[data-theme="minimal"] .ihb-core:not(.ihb-ghost)::after { background: rgba(238,241,246,var(--fog,0)); }
   /* kleine Kugeln: eine groessere Tippflaeche, unsichtbar */
   .ihb-core::before { content: ""; position: absolute; inset: calc(-1 * var(--hit, 0px)); border-radius: 50%; }
+  /* v5.6: Fundstelle unter dem Namen, wenn der Treffer in Beschreibung oder Tags steht */
+  .ihb-snip { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal;
+    font-size: 11px; font-weight: 400; line-height: 1.3; letter-spacing: 0; color: var(--text-2, #9aa3b5); max-width: 210px; margin: 3px auto 0; text-align: center; }
+  .ihb-dstack { display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 100%; }
+  .ihb-detail .ihb-snip { font-size: 8.5px; line-height: 1.25; max-width: 100%; margin-top: 1px; }
+  .ihb-snip .ihb-hl { padding: 0 2px; }
+  .ihb-tree-label .ihb-snip, .ihb-inbox-text .ihb-snip { max-width: none; margin: 2px 0 0; text-align: left; font-size: 12px; }
+  .ihb-tree-label:has(.ihb-snip) { white-space: normal; }
+  /* v5.4: Mails hineinziehen - Rahmen um die Karte, Hinweis- und Ergebniszeile */
+  body.ihb-maildrag .ihb-map { outline: 2px dashed var(--amber); outline-offset: -6px; }
+  .ihb-mailtoast {
+    position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 90; max-width: min(560px, calc(100vw - 32px));
+    transform: translate(-50%, 8px); opacity: 0; pointer-events: none; padding: 9px 14px; border-radius: 12px;
+    background: var(--surface-solid); color: var(--text); border: 1px solid var(--line-strong);
+    box-shadow: 0 8px 24px rgba(0,0,0,.28); font-size: 13px; line-height: 1.35; text-align: center;
+    transition: opacity .2s ease, transform .2s ease;
+  }
+  .ihb-mailtoast.is-on { opacity: 1; transform: translate(-50%, 0); }
+  .ihb-mailtoast.has-act.is-on { pointer-events: auto; }
+  /* beim Schreiben im grossen Glas: Zoomknoepfe weg, das Glas etwas klarer, die Ideen schimmern durch */
+  body.ihb-writing .ihb-zoomctl { opacity: 0; pointer-events: none; }
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    body.ihb-writing[data-theme] .ihb-display { background: rgba(12,17,24,.64); -webkit-backdrop-filter: blur(12px) saturate(1.3); backdrop-filter: blur(12px) saturate(1.3); }
+    body.ihb-writing[data-theme="minimal"] .ihb-display { background: rgba(250,251,253,.70); -webkit-backdrop-filter: blur(12px) saturate(1.2); backdrop-filter: blur(12px) saturate(1.2); }
+  }
+  .ihb-toast-act { background: none; border: 0; padding: 2px 4px; margin: -2px 0; font: inherit; font-weight: 600; color: var(--amber); cursor: pointer; }
+  .ihb-toast-act:hover { text-decoration: underline; }
+  body[data-motion="off"] .ihb-mailtoast { transition: none; }
+  .ihb-inbox-more { color: var(--text-3); font-size: .9em; margin-left: 2px; }
   /* v5.3: Wolken - ein zarter Schleier in der Mischfarbe ihrer Ideen, am Rand ihr Tag */
   #cloudsLayer { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
   .ihb-cloud {
@@ -1744,7 +1785,7 @@
 
   <div id="captionArea"></div>
 
-  <div class="ihb-version">IdeaHub v5.3</div>
+  <div class="ihb-version">IdeaHub v5.6</div>
 
   <input id="importInput" type="file" accept=".md,text/markdown" multiple style="display:none" />
   <input id="importJsonInput" type="file" accept=".json,application/json" style="display:none" />
@@ -2091,10 +2132,8 @@
     if (state.focusedId !== null) return "mini";
     var q = state.query.trim().toLowerCase();
     if (!q) return "mini";
-    var coreMatch = core.text.toLowerCase().indexOf(q) !== -1 ||
-      (core.subtitle || "").toLowerCase().indexOf(q) !== -1 ||
-      (core.tags || []).some(function (t) { return t.toLowerCase().indexOf(q) !== -1; });
-    var detailMatch = core.details.some(function (d) { return d.text.toLowerCase().indexOf(q) !== -1; });
+    var coreMatch = coreTextHit(core, q);   // v5.6: auch die Inhalte
+    var detailMatch = core.details.some(function (d) { return detailTextHit(d, q); });
     return (coreMatch || detailMatch) ? "full" : "mini";
   }
   // The "add detail" ghost only makes sense while the core is focused.
@@ -3711,6 +3750,36 @@
     var after = t.slice(idx + q.length);
     return escapeHtml(before) + '<mark class="ihb-hl">' + escapeHtml(match) + "</mark>" + escapeHtml(after);
   }
+  // ---- v5.6: die Suche liest auch die Inhalte ----
+  function hasQ(str, q) { return !!q && str != null && String(str).toLowerCase().indexOf(q) !== -1; }
+  function tagsHaveQ(tags, q) { return (tags || []).some(function (t) { return hasQ(t, q); }); }
+  function coreTextHit(core, q) { return hasQ(core.text, q) || hasQ(core.subtitle, q) || tagsHaveQ(core.tags, q) || hasQ(core.notes, q); }
+  function detailTextHit(d, q) { return hasQ(d.text, q) || hasQ(d.notes, q) || tagsHaveQ(d.tags, q); }
+  var SNIP_AROUND = 30;   // so viele Zeichen Umgebung je Seite
+  var SNIP_SMALL = 8;     // in der kleinen Detailkugel nur das Wort und ein Hauch Umgebung
+  // Die Fundstelle, wenn der Treffer nicht schon im sichtbaren Namen steht:
+  // aus den Texten (Untertitel, Beschreibung) ein Ausschnitt um das Wort, sonst der Tag.
+  function snippetFor(query, shown, texts, tags, around) {
+    var q = (query || "").trim().toLowerCase(), A = around || SNIP_AROUND;
+    if (!q) return "";
+    for (var i = 0; i < shown.length; i++) if (hasQ(shown[i], q)) return "";
+    for (var j = 0; j < texts.length; j++) {
+      var t = String(texts[j] || "").replace(/\s+/g, " ").trim(), at = t.toLowerCase().indexOf(q);
+      if (at === -1) continue;
+      var a = Math.max(0, at - A), b = Math.min(t.length, at + q.length + A);
+      if (a > 0) { var sp = t.indexOf(" ", a); if (sp !== -1 && sp < at) a = sp + 1; }   // am Wortanfang beginnen
+      if (b < t.length) { var sp2 = t.lastIndexOf(" ", b); if (sp2 > at + q.length) b = sp2; }   // am Wortende enden
+      return '<span class="ihb-snip">' + (a > 0 ? "… " : "") + highlightMatch(t.slice(a, b), query) + (b < t.length ? " …" : "") + "</span>";
+    }
+    var tag = (tags || []).filter(function (x) { return hasQ(x, q); })[0];
+    return tag ? '<span class="ihb-snip">#' + highlightMatch(tag, query) + "</span>" : "";
+  }
+  // Name eines lesbaren Details; mit Fundstelle stehen beide untereinander
+  function dLabelHtml(d) {
+    var label = '<span class="ihb-label">' + highlightMatch(d.text, state.query) + "</span>";
+    var snip = snippetFor(state.query, [d.text], [d.notes], d.tags, SNIP_SMALL);
+    return snip ? '<span class="ihb-dstack">' + label + snip + "</span>" : label;
+  }
   function slugify(str) {
     var s = (str || "")
       .toLowerCase()
@@ -3960,17 +4029,16 @@
       // A tag sitting only on a detail still belongs to that branch: without
       // this the core dimmed away and took the matching detail with it.
       var tagOk = !tagSearching || coreTagHit || detailTagHit;
-      var coreTextMatch = !textSearching || core.text.toLowerCase().indexOf(q) !== -1 ||
-        (core.subtitle || "").toLowerCase().indexOf(q) !== -1 ||
-        (core.tags || []).some(function (t) { return t.toLowerCase().indexOf(q) !== -1; });
-      var anyDetailTextMatch = core.details.some(function (d) { return d.text.toLowerCase().indexOf(q) !== -1; });
+      // v5.6: auch Beschreibungen und die Tags der Details
+      var coreTextMatch = !textSearching || coreTextHit(core, q);
+      var anyDetailTextMatch = core.details.some(function (d) { return detailTextHit(d, q); });
       var passesFilters = tagOk && (!textSearching || coreTextMatch || anyDetailTextMatch);
       // Focus never narrows the search: a focused idea always stays visible, and
       // matches elsewhere still light up so the hub search remains global.
       var coreActive = isFocused || (focusing ? (textSearching || tagSearching) && passesFilters : passesFilters);
       var details = new Map();
       core.details.forEach(function (d) {
-        var dOwn = d.text.toLowerCase().indexOf(q) !== -1;
+        var dOwn = detailTextHit(d, q);
         var dTagOk = !tagSearching || coreTagHit ||
           (d.tags || []).some(function (t) { return state.activeTags.indexOf(t) !== -1; });
         var dActive = isFocused ? true : (coreActive && dTagOk && (!textSearching || coreTextMatch || dOwn));
@@ -4589,7 +4657,8 @@
         progressRingSvg(progress) +
         coreIconSvg(core.icon, 17) +
         '<span class="ihb-name"><span class="ihb-label">' + highlightMatch(core.text, state.query) + '</span>' +
-        ((core.subtitle || "").trim() ? '<span class="ihb-sublabel">' + highlightMatch(core.subtitle, state.query) + '</span>' : "") + '</span>' +
+        ((core.subtitle || "").trim() ? '<span class="ihb-sublabel">' + highlightMatch(core.subtitle, state.query) + '</span>' : "") +
+        snippetFor(state.query, [core.text], [core.subtitle, core.notes], core.tags) + '</span>' +
         '<button type="button" class="ihb-editbtn" data-role="edit-core" data-core-id="' + core.id + '" aria-label="Titel bearbeiten">' + icon("pencil", 10) + '</button>' +
         '<button type="button" class="ihb-del" data-role="del-core" data-core-id="' + core.id + '" aria-label="Kernidee löschen">' + icon("x", 11) + '</button>' +
         '<button type="button" class="ihb-tagbtn' + (((core.tags && core.tags.length) || (core.notes && core.notes.trim()) || (core.subtitle && core.subtitle.trim()) || (core.icon && core.icon !== "none") || (core.color && core.color !== "auto")) ? " has-extra" : "") + '" data-role="tag-btn" data-core-id="' + core.id + '" aria-label="Tags und Beschreibung bearbeiten">' + icon("tag", 10) + '</button>' +
@@ -4605,7 +4674,7 @@
           'data-shadow="' + glassShadow(palette.rgb, palette.glow, true) + '" title="' + escapeHtml(d.text + ((d.notes || "").trim() ? "\n\n" + d.notes.trim() : "")) + '" ' +
           'style="' + sizeStyle(isFull ? L.focusW : L.miniW) + '--tint:' + palette.rgb + ';background:' + glassFill(palette.rgb, 0.72) + ';">' +
           (isFull
-            ? '<span class="ihb-label">' + highlightMatch(d.text, state.query) + '</span>' +
+            ? dLabelHtml(d) +
               '<button type="button" class="ihb-del" data-role="del-detail" data-core-id="' + core.id + '" data-detail-id="' + d.id + '" aria-label="Detailidee löschen">' + icon("x", 10) + '</button>' +
               '<button type="button" class="ihb-statusbtn status-' + st + '" data-role="status-btn" data-core-id="' + core.id + '" data-detail-id="' + d.id + '" aria-label="Status: ' + st + ', antippen zum Ändern">' + (st === "erledigt" ? icon("check", 9) : "") + '</button>' +
               '<button type="button" class="ihb-notebtn' + ((d.notes || "").trim() ? " has-extra" : "") + '" data-role="detail-note" data-core-id="' + core.id + '" data-detail-id="' + d.id + '" aria-label="Beschreibung bearbeiten">' + icon("pencil", 9) + '</button>'
@@ -5880,40 +5949,54 @@
   // ---------- editor that unfolds from the hub ----------
   // One panel for both kinds of idea, anchored to the hub so editing happens
   // where you are already looking, instead of in a dialogue that covers the map.
+  // v5.5: drei Bereiche; breit links (a, b) und rechts die Beschreibung (n),
+  // schmal untereinander a, n, b. Symbol und Farbe zugeklappt mit Vorschau.
+  function editorTagsHtml(item) {
+    return '<label class="ihb-fieldlabel" for="edTags">Tags</label>' +
+      '<input id="edTags" class="ihb-taginput" placeholder="tag1, tag2" value="' + escapeHtml((item.tags || []).join(", ")) + '" />' +
+      '<div class="ihb-tagsuggest" id="edTagSuggest"></div>';
+  }
+  function editorLookHtml(withIcon) {
+    return '<details class="ihb-look" id="edLook"><summary><span class="ihb-fieldlabel">' + (withIcon ? "Symbol und Farbe" : "Farbe") + "</span>" +
+      '<span class="ihb-look-preview" id="edLookPreview"></span><span class="ihb-look-chev" aria-hidden="true"></span></summary>' +
+      '<div class="ihb-look-body">' +
+      (withIcon ? '<span class="ihb-fieldlabel">Symbol</span><div class="ihb-iconpicker" id="edIcons"></div>' : "") +
+      '<span class="ihb-fieldlabel">Farbe</span><div class="ihb-colorpicker" id="edColors"></div></div></details>';
+  }
+  function editorNotesHtml(item) {
+    return '<div class="ihb-ed-n">' + notesLabelRow() +
+      '<textarea id="edNotes" class="ihb-notesarea" placeholder="So ausführlich wie nötig…">' + escapeHtml(item.notes || "") + "</textarea></div>";
+  }
   function editorFieldsForCore(core) {
     var p = coreProgress(core);
-    var html = '<p class="ihb-note">' +
+    return '<div class="ihb-editor-cols">' +
+      '<div class="ihb-ed-a"><p class="ihb-note">' +
       (p.total ? p.done + " von " + p.total + " Details erledigt" : "Noch keine Details angelegt.") + "</p>" +
-      '<div class="ihb-editor-cols">' +
-      '<div class="ihb-editor-side" id="edIconsCol"><span class="ihb-fieldlabel">Symbol</span><div class="ihb-iconpicker" id="edIcons"></div></div>' +
-      '<div class="ihb-editor-main">' +
       '<label class="ihb-fieldlabel" for="edSubtitle">Untertitel</label>' +
       '<input id="edSubtitle" class="ihb-taginput" placeholder="Kurze Ergänzung zum Titel" value="' + escapeHtml(core.subtitle || "") + '" />' +
-      notesLabelRow() +
-      '<textarea id="edNotes" class="ihb-notesarea" placeholder="So ausführlich wie nötig…">' + escapeHtml(core.notes || "") + '</textarea>' +
-      '<label class="ihb-fieldlabel" for="edTags">Tags</label>' +
-      '<input id="edTags" class="ihb-taginput" placeholder="tag1, tag2" value="' + escapeHtml((core.tags || []).join(", ")) + '" />' +
-      '<div class="ihb-tagsuggest" id="edTagSuggest"></div>' +
-      '</div>' +
-      '<div class="ihb-editor-side" id="edColorsCol"><span class="ihb-fieldlabel">Farbe</span><div class="ihb-colorpicker" id="edColors"></div></div>' +
+      "</div>" +
+      editorNotesHtml(core) +
+      '<div class="ihb-ed-b">' + editorTagsHtml(core) + editorLookHtml(true) + "</div>" +
       "</div>";
-    return html;
   }
 
   function editorFieldsForDetail(d) {
-    return '<label class="ihb-fieldlabel" for="edTitle">Titel</label>' +
+    return '<div class="ihb-editor-cols">' +
+      '<div class="ihb-ed-a"><label class="ihb-fieldlabel" for="edTitle">Titel</label>' +
       '<input id="edTitle" class="ihb-taginput" placeholder="Worum geht es?" value="' + escapeHtml(d.text || "") + '" />' +
-      '<label class="ihb-fieldlabel">Status</label><div class="ihb-themerow" id="edStatus"></div>' +
-      '<div class="ihb-editor-cols">' +
-      '<div class="ihb-editor-main">' +
-      notesLabelRow() +
-      '<textarea id="edNotes" class="ihb-notesarea" placeholder="So ausführlich wie nötig…">' + escapeHtml(d.notes || "") + '</textarea>' +
-      '<label class="ihb-fieldlabel" for="edTags">Tags</label>' +
-      '<input id="edTags" class="ihb-taginput" placeholder="tag1, tag2" value="' + escapeHtml((d.tags || []).join(", ")) + '" />' +
-      '<div class="ihb-tagsuggest" id="edTagSuggest"></div>' +
-      '</div>' +
-      '<div class="ihb-editor-side" id="edColorsCol"><span class="ihb-fieldlabel">Farbe</span><div class="ihb-colorpicker" id="edColors"></div></div>' +
+      '<label class="ihb-fieldlabel">Status</label><div class="ihb-themerow" id="edStatus"></div></div>' +
+      editorNotesHtml(d) +
+      '<div class="ihb-ed-b">' + editorTagsHtml(d) + editorLookHtml(false) + "</div>" +
       "</div>";
+  }
+  // die zugeklappte Zeile zeigt, was gewaehlt ist
+  function renderLookPreview() {
+    var el = document.getElementById("edLookPreview");
+    if (!el) return;
+    var c = colorChoiceByKey(draftColor);
+    var ic = state.tagEditing && draftIcon && draftIcon !== "none" ? coreIconSvg(draftIcon, 14) : "";
+    el.innerHTML = ic + '<span class="ihb-look-dot' + (c && c.hex ? "" : " auto") + '"' + (c && c.hex ? ' style="background:' + c.hex + '"' : "") + "></span>" +
+      '<span class="ihb-look-name">' + escapeHtml(c ? c.label : "Automatisch") + "</span>";
   }
 
   function renderIconPicker() {
@@ -5928,6 +6011,7 @@
     var keepX = host.scrollLeft;
     host.innerHTML = html;
     host.scrollLeft = keepX;   // v5.1: die gewischte Zeile springt nicht zurueck
+    renderLookPreview();
   }
 
   function renderColorPicker() {
@@ -5944,6 +6028,7 @@
     var keepX = host.scrollLeft;
     host.innerHTML = html;
     host.scrollLeft = keepX;
+    renderLookPreview();
   }
 
   function renderDetailStatusRow() {
@@ -6096,29 +6181,40 @@
       gap = Math.max(0, lim.gap);
       over = lim.over;
     }
+    // v5.5: zum Schreiben waechst das Glas nach Bildschirmgroesse; die Ideen
+    // bleiben, wo sie sind, und schimmern durch
+    var bigEd = hubOpen && editorBig();
+    if (bigEd) {
+      var bg = bigGlass(L, d, horizontal);
+      if (bg) { gap = Math.max(gap, bg.gap); over = Math.max(over, bg.over); } else bigEd = false;
+    }
+    if (document.body) document.body.classList.toggle("ihb-writing", !!bigEd);   // Zoomknoepfe weg, Glas klarer
     if (hubOpen && hubDisplayBody) {
       // Inhalt gleich in Endbreite setzen: so bricht waehrend der Bewegung nichts
       // um, die wachsende Flaeche gibt ihn nur frei. Dann die Glasflaeche nach
       // dem Inhalt bemessen - mindestens so hoch wie der Hub.
       var finalW = horizontal ? Math.max(0, gap) : d + over;
-      var bodyW = Math.min(finalW, 480);
+      var bodyW = bigEd ? finalW : Math.min(finalW, 480);
       // Type is scaled from the map, not left at fixed pixels: on a phone the
       // panel is far smaller, so unscaled text swamped it. The floor keeps
       // labels and inputs readable at the smallest sizes.
       hubDisplay.style.setProperty("--dsc", clampRange(L.s * 0.92, 0.9, 1).toFixed(3));
-      hubDisplayBody.style.padding = Math.round(Math.max(10, finalW * 0.045)) + "px " +
-        Math.round(Math.max(14, finalW * 0.055)) + "px";
-      hubDisplayBody.style.maxWidth = "480px";
+      var bpy = Math.round(Math.max(10, finalW * 0.045)), bpx = Math.round(Math.max(14, finalW * 0.055));
+      if (bigEd) { bpy = Math.min(bpy, 22); bpx = Math.min(bpx, 30); }
+      hubDisplayBody.style.padding = bpy + "px " + bpx + "px";
+      hubDisplayBody.style.setProperty("--bpy", bpy + "px");   // fuer die stehende Kopfzeile
+      hubDisplayBody.style.setProperty("--bpx", bpx + "px");
+      hubDisplayBody.style.maxWidth = bigEd ? "none" : "480px";
       hubDisplayBody.style.width = bodyW + "px";
       hubDisplayBody.style.marginLeft = (-bodyW / 2) + "px";
       // v5.1: so viel Hoehe hat der Inhalt hoechstens; danach richtet sich die
       // Beschreibung im Editor, und schmal ruecken Symbol und Farbe nach unten
-      hubBodyRoom = (horizontal ? d + over : gap) - 2 * Math.round(Math.max(10, finalW * 0.045));
+      hubBodyRoom = (horizontal ? d + over : gap) - 2 * bpy;
       fitEditorIn(hubDisplayBody);
       hubDisplayBody.style.height = "auto";
       var need = hubDisplayBody.offsetHeight;   // 0, wo nichts gemessen werden kann
       hubDisplayBody.style.height = "";
-      if (need > 0) {
+      if (need > 0 && !bigEd) {
         if (horizontal) over = Math.max(0, Math.min(over, need - d));
         else gap = Math.max(Math.min(gap, d), Math.min(gap, need));
       }
@@ -6176,6 +6272,21 @@
   }
 
   function positionHubEditor() { layoutHub(); }
+  // v5.5: der Editor auf der Karte im Glas (nicht im Blatt, nicht im Baum)
+  function editorBig() { return !!(state.tagEditing || detailEditing) && state.view === "map" && !dialogSheetOpen(); }
+  // so gross darf das Glas werden: um die Mitte der Karte, frei von der Leiste oben
+  // und den Raendern, hoechstens 980 x 800 px, 72 % der Breite und 86 % der Hoehe
+  function bigGlass(L, d, horizontal) {
+    if (!mapEl || !mapEl.getBoundingClientRect) return null;
+    var r = mapEl.getBoundingClientRect(), vw = window.innerWidth || 0, vh = window.innerHeight || 0;
+    if (!r.width || !vw || !vh) return null;
+    var cx = r.left + L.width / 2, cy = r.top + L.width / 2;
+    var nav = document.querySelector(".ihb-nav"), top = nav ? nav.getBoundingClientRect().bottom + 10 : 16;
+    var availW = 2 * Math.min(cx - 16, vw - cx - 16), availH = 2 * Math.min(cy - top, vh - cy - 16);
+    var W = Math.min(980, vw * 0.72, availW), H = Math.min(800, vh * 0.86, availH);
+    if (W < d + 200 || H < d + 40) return null;
+    return horizontal ? { gap: W - d, over: H - d } : { gap: H - d, over: W - d };
+  }
 
   // Opens the hub around some content. The search moves inside so it stays
   // reachable while the hub is parted.
@@ -6266,6 +6377,7 @@
   function openTagEditor(coreId) {
     var core = coreById(coreId);
     if (!core) return;
+    keepEditorDraft();
     sortSession = null;   // ein Editor beendet das Einsortieren
     compostSession = null;
     state.tagEditing = coreId;
@@ -6275,12 +6387,12 @@
     openHubDisplay(
       '<div class="ihb-display-head"><span>Kernidee: ' + escapeHtml(core.text || "Ohne Titel") + "</span>" +
       '<button type="button" data-role="display-close" aria-label="Schließen">&#10005;</button></div>' +
-      editorFieldsForCore(core) +
-      '<div class="ihb-btnrow ihb-editor-saverow"><button type="button" class="ihb-btn primary" data-role="editor-save">Speichern</button></div>');
+      editorFieldsForCore(core));
     renderIconPicker();
     renderColorPicker();
     renderTagSuggestions();
     fitEditor();
+    refitEditorSoon();   // v5.5: nach dem Aufgehen des Blatts noch einmal einpassen
     var f = document.getElementById("edSubtitle");
     if (f) { f.focus(); f.select(); }
   }
@@ -6288,6 +6400,7 @@
   function openDetailEditor(coreId, detailId) {
     var core = coreById(coreId);
     if (!core) return;
+    keepEditorDraft();
     sortSession = null;
     compostSession = null;
     var d = null;
@@ -6300,21 +6413,96 @@
     openHubDisplay(
       '<div class="ihb-display-head"><span>Detailidee</span>' +
       '<button type="button" data-role="display-close" aria-label="Schließen">&#10005;</button></div>' +
-      editorFieldsForDetail(d) +
-      '<div class="ihb-btnrow ihb-editor-saverow"><button type="button" class="ihb-btn primary" data-role="editor-save">Speichern</button></div>');
+      editorFieldsForDetail(d));
     renderDetailStatusRow();
     renderColorPicker();
     renderTagSuggestions();
     fitEditor();
+    refitEditorSoon();   // v5.5: nach dem Aufgehen des Blatts noch einmal einpassen
     var t = document.getElementById("edTitle");
     if (t) { t.focus(); t.select(); }
   }
 
+  // v5.5: Was im Editor steht, gilt. Gespeichert wird beim Schliessen, auf jedem
+  // Weg (x, daneben tippen, Escape, Strg/Cmd + Enter, Enter in einer Zeile, eine
+  // andere Idee, Eingang, Kompost, Ansicht wechseln); Rueckgaengig holt den Stand
+  // davor zurueck.
+  var lastEditUndo = null;
+  function sameJson(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+  // traegt den Editor in die Ideen ein; "undo", wenn sich etwas geaendert hat,
+  // true, wenn ein leeres neues Detail wegfiel, sonst false
+  function saveEditorDraft() {
+    if (!(state.tagEditing || detailEditing)) return false;
+    var host = editorHost();
+    if (!host || !host.querySelector || !host.querySelector("#edNotes")) return false;
+    var tags = val("edTags").split(",").map(function (t) { return t.trim(); }).filter(Boolean);
+    var notes = val("edNotes");
+    if (detailEditing) {
+      var coreId = detailEditing.coreId, detailId = detailEditing.detailId, core = coreById(coreId), old = null;
+      if (!core) return false;
+      core.details.forEach(function (d) { if (d.id === detailId) old = d; });
+      if (!old) return false;
+      var text = val("edTitle").trim();
+      if (!text && !(old.text || "").trim()) {
+        // ein neues Detail, das leer blieb, faellt weg
+        state.cores = state.cores.map(function (c) {
+          return c.id === coreId ? Object.assign({}, c, { details: c.details.filter(function (d) { return d.id !== detailId; }) }) : c;
+        });
+        return true;
+      }
+      if (!text) text = old.text;   // ein geleerter Titel behaelt den alten
+      if (sameJson([old.text, old.notes || "", old.tags || [], old.color || "auto", detailStatus(old)],
+        [text, notes, tags, draftColor, detailDraftStatus])) return false;
+      var next = Object.assign({}, old, { text: text, notes: notes, tags: tags, color: draftColor, status: detailDraftStatus });
+      state.cores = state.cores.map(function (c) {
+        return c.id !== coreId ? c : Object.assign({}, c, { details: c.details.map(function (d) { return d.id === detailId ? next : d; }) });
+      });
+      lastEditUndo = function () {
+        state.cores = state.cores.map(function (c) {
+          return Object.assign({}, c, { details: c.details.map(function (d) { return d.id === detailId ? old : d; }) });
+        });
+      };
+      return "undo";
+    }
+    var editingId = state.tagEditing, oc = coreById(editingId);
+    if (!oc) return false;
+    var subtitle = val("edSubtitle").trim();
+    if (sameJson([oc.tags || [], oc.notes || "", oc.subtitle || "", oc.icon || "none", oc.color || "auto"],
+      [tags, notes, subtitle, draftIcon, draftColor])) return false;
+    var keep = { tags: oc.tags, notes: oc.notes, subtitle: oc.subtitle, icon: oc.icon, color: oc.color };
+    state.cores = state.cores.map(function (c) {
+      return c.id === editingId ? Object.assign({}, c, { tags: tags, notes: notes, subtitle: subtitle, icon: draftIcon, color: draftColor }) : c;
+    });
+    lastEditUndo = function () {
+      state.cores = state.cores.map(function (c) { return c.id === editingId ? Object.assign({}, c, keep) : c; });
+    };
+    return "undo";
+  }
+  function savedNote(saved) {
+    if (!saved) return;
+    onCoresChanged();
+    if (saved === "undo") mailToast("Gespeichert", false, { label: "Rückgängig", run: undoLastEdit });
+  }
+  // vor einem anderen Editor, dem Einsortieren oder dem Kompost
+  function keepEditorDraft() {
+    if (state.tagEditing || detailEditing) savedNote(saveEditorDraft());
+  }
+  function undoLastEdit() {
+    var u = lastEditUndo;
+    lastEditUndo = null;
+    if (!u) return false;
+    u();
+    onCoresChanged();
+    mailToast("Rückgängig gemacht");
+    return true;
+  }
   function closeHubEditor() {
+    var saved = saveEditorDraft();
     state.tagEditing = null;
     detailEditing = null;
-    if (state.view === "tree") { renderTree(); return; }
-    updateHubCount();   // the reading view takes over again, or the hub closes
+    if (state.view === "tree") renderTree();
+    else updateHubCount();   // the reading view takes over again, or the hub closes
+    savedNote(saved);
   }
 
   function val(id) {
@@ -6324,41 +6512,7 @@
   }
 
 
-  function commitHubEditor() {
-    var tags = val("edTags").split(",").map(function (t) { return t.trim(); }).filter(Boolean);
-    var notes = val("edNotes");
-    if (detailEditing) {
-      var coreId = detailEditing.coreId, detailId = detailEditing.detailId;
-      var text = val("edTitle").trim();
-      state.cores = state.cores.map(function (c) {
-        if (c.id !== coreId) return c;
-        if (!text) {
-          return Object.assign({}, c, { details: c.details.filter(function (d) { return d.id !== detailId; }) });
-        }
-        return Object.assign({}, c, {
-          details: c.details.map(function (d) {
-            return d.id === detailId
-              ? Object.assign({}, d, { text: text, notes: notes, tags: tags, color: draftColor, status: detailDraftStatus })
-              : d;
-          })
-        });
-      });
-      closeHubEditor();
-      onCoresChanged();
-      return;
-    }
-    if (state.tagEditing) {
-      var editingId = state.tagEditing;
-      var subtitle = val("edSubtitle").trim();
-      state.cores = state.cores.map(function (c) {
-        return c.id === editingId
-          ? Object.assign({}, c, { tags: tags, notes: notes, subtitle: subtitle, icon: draftIcon, color: draftColor })
-          : c;
-      });
-      closeHubEditor();
-      onCoresChanged();
-    }
-  }
+  function commitHubEditor() { closeHubEditor(); }   // v5.5: Schliessen speichert
 
   // ---------- settings modal ----------
   function openSettings() {
@@ -6873,7 +7027,7 @@
         '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>' +
         "</button>" +
         '<span class="ihb-tree-dot" style="background:' + paletteFor(core, ci).core + '"></span>' +
-        '<span class="ihb-tree-label">' + escapeHtml(core.text || "Ohne Titel") + "</span>" +
+        '<span class="ihb-tree-label">' + highlightMatch(core.text || "Ohne Titel", state.query) + snippetFor(state.query, [core.text], [core.subtitle, core.notes], core.tags) + "</span>" +
         (pr.total ? '<span class="ihb-tree-meta' + (isDone ? ' is-done" title="Erledigt">✓ ' : '">') + pr.done + "/" + pr.total + "</span>" : "") +
         treeRowActions(core.id, null) +
         "</div>";
@@ -6890,7 +7044,7 @@
             '<button type="button" class="ihb-tree-status" data-role="tree-status" ' +
             'data-core-id="' + core.id + '" data-detail-id="' + d.id + '" tabindex="-1" ' +
             'title="' + stLbl + ' — klicken zum Weiterschalten" aria-label="Status: ' + stLbl + '">' + mark + "</button>" +
-            '<span class="ihb-tree-label">' + escapeHtml(d.text || "Ohne Titel") + "</span>" +
+            '<span class="ihb-tree-label">' + highlightMatch(d.text || "Ohne Titel", state.query) + snippetFor(state.query, [d.text], [d.notes], d.tags) + "</span>" +
             treeRowActions(core.id, d.id) +
             "</div>";
         });
@@ -7482,7 +7636,6 @@
       closeHubEditor();
       if (state.view !== "tree") clearFocus();
     }
-    else if (role === "editor-save") commitHubEditor();
     else if (role === "icon-opt") { draftIcon = t.getAttribute("data-icon"); renderIconPicker(); }
     else if (role === "color-opt") { draftColor = t.getAttribute("data-color"); renderColorPicker(); }
     else if (role === "detail-status") { detailDraftStatus = t.getAttribute("data-status"); renderDetailStatusRow(); }
@@ -7492,7 +7645,9 @@
     return true;
   }
   function handleEditorKeydown(e) {
-    if (e.key === "Escape") { closeHubEditor(); return; }
+    // v5.5: Escape geht einen Schritt zurueck (zur Beschreibung der Idee), das x schliesst ganz
+    if (e.key === "Escape") { e.stopPropagation(); closeHubEditor(); return; }
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); closeHubEditor(); return; }   // v5.5
     // Enter saves from the single-line fields; the description needs its newlines
     if (e.key === "Enter" && e.target.tagName === "INPUT") commitHubEditor();
   }
@@ -7572,11 +7727,13 @@
     if (!Array.isArray(list)) return [];
     return list.filter(function (x) { return x && typeof x === "object" && typeof x.text === "string" && x.text.trim(); })
       .map(function (x) {
-        return {
+        var o = {
           id: typeof x.id === "string" && x.id ? x.id : nextId(),
           text: x.text.trim(),
           created: typeof x.created === "string" && !isNaN(Date.parse(x.created)) ? x.created : new Date().toISOString()
         };
+        if (typeof x.notes === "string" && x.notes.trim()) o.notes = x.notes;   // v5.4: z. B. der Text einer Mail
+        return o;
       });
   }
   function persistInbox() {
@@ -7705,14 +7862,15 @@
     state.inbox.slice().sort(oldestFirst).reverse().forEach(function (it) {
       var day = fmtDay(it.created);
       if (day !== lastDay) { html += '<div class="ihb-inbox-day">' + escapeHtml(day) + "</div>"; lastDay = day; }
-      var hit = q && it.text.toLowerCase().indexOf(q) !== -1;
+      var hit = q && (hasQ(it.text, q) || hasQ(it.notes, q));
       var pick = inboxPicks.indexOf(it.id);
       html += '<div class="ihb-inbox-row' + (hit ? " is-match" : "") + (pick !== -1 ? " is-picked" : "") + '" data-role="inbox-item" data-id="' + it.id + '">' +
         '<button type="button" class="ihb-inbox-pick" data-role="inbox-pick" data-id="' + it.id + '" aria-pressed="' + (pick !== -1) +
         '" aria-label="' + (pick !== -1 ? "Markierung aufheben" : "Markieren") + '">' + (pick !== -1 ? pick + 1 : "") + "</button>" +
         '<span class="ihb-inbox-handle" data-role="inbox-handle" data-id="' + it.id + '" title="Auf eine Kernidee ziehen">⠿</span>' +
         '<span class="ihb-inbox-time">' + fmtTime(it.created) + "</span>" +
-        '<span class="ihb-inbox-text">' + escapeHtml(it.text) +
+        '<span class="ihb-inbox-text">' + highlightMatch(it.text, state.query) + snippetFor(state.query, [it.text], [it.notes], []) +
+        (it.notes ? ' <span class="ihb-inbox-more" title="' + escapeHtml(shortText(it.notes.split("\n")[0], 80)) + '">' + (/^Mail von /.test(it.notes) ? "✉" : "≡") + "</span>" : "") +
         (pick === 0 && inboxPicks.length > 1 ? ' <span class="ihb-inbox-badge">Titel</span>' : "") + "</span>" +
         '<button type="button" class="ihb-chip" data-role="inbox-sort" data-id="' + it.id + '">Einsortieren</button>' +
         '<button type="button" class="ihb-inbox-drop" data-role="inbox-drop" data-id="' + it.id + '" aria-label="Verwerfen" title="Verwerfen">' + icon("x", 12) + "</button>" +
@@ -7755,6 +7913,7 @@
     var queue = ids.filter(function (id) { return !!inboxItem(id); });
     if (!queue.length) return;
     handOffInbox();
+    keepEditorDraft();
     state.tagEditing = null;
     detailEditing = null;
     compostSession = null;
@@ -7831,7 +7990,7 @@
     var pt = p.prefix && p.rest ? coreForPrefix(p.prefix) : null;
     var text = pt && pt.id === core.id ? p.rest : p.text;
     if (!text) return false;
-    var d = { id: nextId(), text: text, status: "offen", notes: "", tags: p.tags.slice(), color: "auto", created: item.created };
+    var d = { id: nextId(), text: text, status: "offen", notes: item.notes || "", tags: p.tags.slice(), color: "auto", created: item.created };
     state.cores = state.cores.map(function (c) { return c.id === core.id ? Object.assign({}, c, { details: c.details.concat([d]) }) : c; });
     removeFromInbox(item.id);
     onCoresChanged();
@@ -7847,10 +8006,10 @@
     if (p.prefix && p.rest && !p.target) {
       // "Garten: Hochbeet bauen" -> Kernidee "Garten" mit diesem Detail
       fresh = { id: id, text: p.prefix, subtitle: "", icon: "none", color: "auto", tags: [], notes: "", created: item.created,
-        details: [{ id: nextId(), text: p.rest, status: "offen", notes: "", tags: p.tags.slice(), color: "auto", created: item.created }] };
+        details: [{ id: nextId(), text: p.rest, status: "offen", notes: item.notes || "", tags: p.tags.slice(), color: "auto", created: item.created }] };
     } else {
       if (!p.text) return null;
-      fresh = { id: id, text: p.text, subtitle: "", icon: "none", color: "auto", tags: p.tags.slice(), notes: "", created: item.created, details: [] };
+      fresh = { id: id, text: p.text, subtitle: "", icon: "none", color: "auto", tags: p.tags.slice(), notes: item.notes || "", created: item.created, details: [] };
     }
     state.cores = state.cores.concat([fresh]);
     removeFromInbox(item.id);
@@ -7976,7 +8135,7 @@
   function inboxMatches() {
     var q = state.query.trim().toLowerCase();
     if (!q) return [];
-    return state.inbox.filter(function (x) { return x.text.toLowerCase().indexOf(q) !== -1; });
+    return state.inbox.filter(function (x) { return hasQ(x.text, q) || hasQ(x.notes, q); });
   }
   function inboxHitNote() {
     var n = inboxMatches().length;
@@ -8009,7 +8168,7 @@
     var html = "";
     for (var i = 0; i < show; i++) {
       var it = items[i], s = slots[i];
-      var hit = q && it.text.toLowerCase().indexOf(q) !== -1;
+      var hit = q && (hasQ(it.text, q) || hasQ(it.notes, q));
       html += '<button type="button" class="ihb-inboxdot' + (q ? (hit ? " is-match" : " is-dim") : "") + '" data-role="inbox-dot" data-id="' + it.id +
         '" style="left:' + s.x + "px;top:" + s.y + 'px" title="' + escapeHtml(it.text) + '" aria-label="Gedanke im Eingang: ' + escapeHtml(it.text) + '"></button>';
     }
@@ -8134,6 +8293,8 @@
       var day = d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
       if (day !== lastDay) { if (lastDay) lines.push(""); lines.push("## " + day); lastDay = day; }
       lines.push("- [ ] " + fmtTime(it.created) + " " + it.text.replace(/\s*\r?\n\s*/g, " "));
+      // v5.4: die Beschreibung eingerueckt darunter, als Zitat (kein neuer Gedanke)
+      if (it.notes) it.notes.replace(/\r\n?/g, "\n").split("\n").forEach(function (l) { lines.push("  > " + l); });
     });
     lines.push("");
     return lines.join("\n");
@@ -8144,14 +8305,17 @@
     return !!fm && /(^|\n)typ:\s*eingang\s*($|\r?\n)/i.test(fm[1]);
   }
   function parseInboxMd(text) {
-    var out = [], day = null;
+    var out = [], day = null, cur = null;
     (text || "").replace(/\r\n?/g, "\n").split("\n").forEach(function (line) {
       var h = line.match(/^##\s+(\d{4})-(\d{2})-(\d{2})\s*$/);
       if (h) { day = [Number(h[1]), Number(h[2]) - 1, Number(h[3])]; return; }
+      var q = line.match(/^\s+>\s?(.*)$/);   // v5.4: Beschreibung des Gedankens darueber
+      if (q) { if (cur) cur.notes = (cur.notes === undefined ? "" : cur.notes + "\n") + q[1]; return; }
       var m = line.match(/^\s*[-*]\s+(?:\[([ xX~])\]\s+)?(?:(\d{1,2}):(\d{2})\s+)?(.+)$/);
-      if (!m || !m[4].trim() || (m[1] && /x/i.test(m[1]))) return;   // abgehakt = erledigt
+      if (!m || !m[4].trim() || (m[1] && /x/i.test(m[1]))) { if (m) cur = null; return; }   // abgehakt = erledigt
       var dt = day ? new Date(day[0], day[1], day[2], m[2] ? Number(m[2]) : 0, m[3] ? Number(m[3]) : 0) : new Date();
-      out.push({ id: nextId(), text: m[4].trim(), created: dt.toISOString() });
+      cur = { id: nextId(), text: m[4].trim(), created: dt.toISOString() };
+      out.push(cur);
     });
     return out;
   }
@@ -8218,11 +8382,11 @@
     if (bundleCheck(items.map(function (x) { return x.id; }))) return null;
     var head = parseCapture(items[0].text);
     var id = nextId();
-    var fresh = { id: id, text: head.text || items[0].text, subtitle: "", icon: "none", color: "auto", tags: head.tags.slice(), notes: "",
+    var fresh = { id: id, text: head.text || items[0].text, subtitle: "", icon: "none", color: "auto", tags: head.tags.slice(), notes: items[0].notes || "",
       created: items[0].created,
       details: items.slice(1).map(function (it) {
         var p = parseCapture(it.text);
-        return { id: nextId(), text: p.text || it.text, status: "offen", notes: "", tags: p.tags.slice(), color: "auto", created: it.created };
+        return { id: nextId(), text: p.text || it.text, status: "offen", notes: it.notes || "", tags: p.tags.slice(), color: "auto", created: it.created };
       }) };
     state.cores = state.cores.concat([fresh]);
     items.forEach(function (it) { removeFromInbox(it.id); });
@@ -8521,6 +8685,7 @@
     if (!queue.length) return;
     if (sortSession) endSort();
     handOffInbox();
+    keepEditorDraft();
     state.tagEditing = null;
     detailEditing = null;
     compostSession = { queue: queue, done: 0, total: queue.length };
@@ -8672,10 +8837,11 @@
   function compostMatches() {
     var q = state.query.trim().toLowerCase();
     if (!q) return [];
-    return state.compost.filter(function (c) {
-      var hay = [c.text, c.subtitle, c.notes, (c.tags || []).join(" ")].concat((c.details || []).map(function (d) { return d.text; }));
-      return hay.join("\n").toLowerCase().indexOf(q) !== -1;
-    });
+    return state.compost.filter(function (c) { return compostHit(c, q); });
+  }
+  // v5.6: im Kompost zaehlen auch Beschreibung und Tags der Details
+  function compostHit(c, q) {
+    return !!q && (coreTextHit(c, q) || (c.details || []).some(function (d) { return detailTextHit(d, q); }));
   }
   function compostHitNote() {
     var n = compostMatches().length;
@@ -8696,8 +8862,7 @@
     if (!state.compost.length) return html + '<p class="ihb-note" data-role="compost-empty" style="margin-top:10px;">Der Kompost ist leer.</p></div>';
     html += '<div class="ihb-compost-list">';
     state.compost.slice().sort(function (a, b) { return Date.parse(b.composted) - Date.parse(a.composted); }).forEach(function (c) {
-      var hay = [c.text, c.subtitle, c.notes, (c.tags || []).join(" ")].concat((c.details || []).map(function (d) { return d.text; })).join("\n").toLowerCase();
-      var hit = q && hay.indexOf(q) !== -1;
+      var hit = compostHit(c, q);
       html += '<div class="ihb-compost-row' + (hit ? " is-match" : "") + '" data-role="compost-item" data-id="' + c.id + '">' +
         '<span class="ihb-compost-name">' + escapeHtml(c.text || "Unbenannt") + "</span>" +
         '<span class="ihb-compost-meta">' + escapeHtml(compostFacts(c)) + " · kompostiert " + fmtDate(c.composted) + "</span>" +
@@ -9082,6 +9247,7 @@
     stopDialogAnims();
     dialogSheet.classList.remove("closing");
     dialogSheet.classList.add("open");
+    dialogSheet.classList.toggle("ihb-sheet-edit", !!(state.tagEditing || detailEditing));   // v5.5
     var wasInfo = dialogSheet.classList.contains("ihb-sheet-info");
     dialogSheet.classList.toggle("ihb-sheet-info", !!info);
     if (document.body) document.body.classList.toggle("ihb-sheetfocus", !!info);
@@ -9192,7 +9358,7 @@
   // oeffnet "Grosses Feld" eine Schreibflaeche nach Bildschirmgroesse.
   var NOTES_MIN_LINES = 5;
   var NOTES_LABEL_ROOM = 36;   // Beschriftung mit Knopf ueber dem Feld
-  var EDITOR_NARROW = 440;     // darunter stehen Symbol und Farbe als Zeilen
+  var EDITOR_WIDE = 600;       // v5.5: ab hier zwei Spalten, rechts die Beschreibung
   var hubBodyRoom = 0;         // so hoch darf der Inhalt im Glas hoechstens werden (px)
   function notesLabelRow() {
     return '<div class="ihb-fieldrow"><label class="ihb-fieldlabel" for="edNotes">Beschreibung</label>' +
@@ -9208,6 +9374,22 @@
     var kb = parseFloat(document.documentElement.style.getPropertyValue("--kb")) || 0;
     return ((window.innerHeight || 800) - kb) * 0.45;
   }
+  function notesFill(ta) {
+    var host = notesHost(ta);
+    if (!host || !(state.tagEditing || detailEditing)) return 0;
+    var cs = getComputedStyle(host), padT = parseFloat(cs.paddingTop) || 0, room;
+    if (host === hubDisplayBody) { if (!editorBig() || !(hubBodyRoom > 0)) return 0; room = hubBodyRoom; }
+    else if (host === dialogCard && dialogSheet && dialogSheet.classList.contains("ihb-sheet-edit")) {
+      // aus der Endlage gerechnet: beim Oeffnen gleitet das Blatt noch
+      var par = host.offsetParent, ph = par ? par.clientHeight : (window.innerHeight || 0);
+      room = ph - (parseFloat(cs.top) || 0) - (parseFloat(cs.bottom) || 0) - padT - (parseFloat(cs.paddingBottom) || 0) - (parseFloat(cs.borderTopWidth) || 0) - (parseFloat(cs.borderBottomWidth) || 0);
+    }
+    else return 0;
+    var off = ta.getBoundingClientRect().top - host.getBoundingClientRect().top - (parseFloat(cs.borderTopWidth) || 0) - padT + host.scrollTop;
+    var cols = ta.closest(".ihb-editor-cols"), b = cols && cols.querySelector(".ihb-ed-b"), after = 0;
+    if (b && !cols.classList.contains("is-wide")) after = b.offsetHeight + (parseFloat(getComputedStyle(b).marginTop) || 0);
+    return Math.floor(room - off - after - 4);
+  }
   function fitNotes(ta) {
     if (!ta || !ta.clientWidth) return false;   // nicht gezeichnet (verborgen, Testumgebung)
     var cs = getComputedStyle(ta);
@@ -9217,6 +9399,8 @@
     var bord = (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
     var minH = Math.ceil(NOTES_MIN_LINES * lh + padY + bord);
     var cap = Math.max(minH, Math.floor(notesCap(ta)));
+    var fill = notesFill(ta);   // v5.5: im grossen Glas und im Blatt fuellt sie den freien Platz
+    if (fill >= minH) { minH = fill; cap = fill; }
     var key = ta.clientWidth + "|" + cap + "|" + lh + "|" + ta.value;
     if (ta._ihbFit === key) return false;   // nichts Neues: nicht messen
     ta._ihbFit = key;
@@ -9235,20 +9419,28 @@
     if (cols && host.clientWidth) {
       var hcs = getComputedStyle(host);
       var inner = host.clientWidth - (parseFloat(hcs.paddingLeft) || 0) - (parseFloat(hcs.paddingRight) || 0);
-      var narrow = inner < EDITOR_NARROW;
-      if (cols.classList.contains("is-narrow") !== narrow) {
-        cols.classList.toggle("is-narrow", narrow);
-        if (narrow) eachEl(cols.querySelectorAll(".ihb-iconpicker, .ihb-colorpicker"), revealActive);
-      }
+      var wide = inner >= EDITOR_WIDE;
+      if (cols.classList.contains("is-wide") !== wide) cols.classList.toggle("is-wide", wide);
     }
     return fitNotes(host.querySelector("#edNotes"));
   }
+  // Symbol und Farbe aufgeklappt: die gewaehlte ins Bild, die Beschreibung passt sich an
+  document.addEventListener("toggle", function (e) {
+    var t = e.target;
+    if (!t || t.id !== "edLook") return;
+    if (t.open) eachEl(t.querySelectorAll(".ihb-iconpicker, .ihb-colorpicker"), revealActive);
+    fitEditor();
+  }, true);
   // in einer Wischzeile die gewaehlte Option ins Bild holen
   function revealActive(row) {
     var a = row && row.querySelector(".active");
     if (!a || row.scrollWidth <= row.clientWidth + 1) return;
     var rr = row.getBoundingClientRect(), ar = a.getBoundingClientRect();
     if (ar.left < rr.left || ar.right > rr.right) row.scrollLeft += (ar.left + ar.width / 2) - (rr.left + rr.width / 2);
+  }
+  function refitEditorSoon() {
+    requestAnimationFrame(fitEditor);
+    setTimeout(fitEditor, Math.round(520 * speedFactor()) + 40);
   }
   function fitEditor() {
     if (!(state.tagEditing || detailEditing)) return;
@@ -9356,6 +9548,307 @@
       if (notesBigOpen()) notesBigEl.classList.toggle("is-sheet", notesBigSheet());
       fitEditor();
     }, 120);
+  });
+
+  // ---------- v5.5: daneben tippen schliesst das Glas ----------
+  // ... und speichert. Der Tipp tut sonst nichts (keine andere Idee, kein Drehen);
+  // die Leiste oben bleibt bedienbar, der Editor schliesst vorher.
+  var editorOutside = false;
+  document.addEventListener("pointerdown", function (e) {
+    if (!editorBig() || !hubOpen) return;
+    var t = e.target;
+    if (!t || !t.closest || t.closest("#hub, #notesBig, #settingsModal, .ihb-mailtoast")) return;
+    if (t.closest(".ihb-nav")) { closeHubEditor(); return; }
+    editorOutside = true;
+    e.preventDefault();
+    e.stopPropagation();
+    closeHubEditor();
+    clearFocus();   // wie das x
+  }, true);
+  document.addEventListener("click", function (e) {
+    if (!editorOutside) return;
+    editorOutside = false;
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
+
+  // ---------- Mails hineinziehen (v5.4) ----------
+  // Eine Mail als Datei (.eml) wird ein Gedanke im Eingang, auf einer Kernidee
+  // losgelassen ein Detail von ihr, auf dem + eine neue Kernidee. Der Betreff wird
+  // der Text; Absender, Datum, Anhaenge und der Mailtext stehen in der
+  // Beschreibung. Gelesen wird hier im Browser, nichts verlaesst das Geraet.
+  var MAIL_TEXT_MAX = 4000, MAIL_SUBJECT_MAX = 160;
+  function binOf(bytes) {
+    var out = "";
+    for (var i = 0; i < bytes.length; i += 8192) out += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+    return out;
+  }
+  function bytesOf(bin) {
+    var b = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i) & 255;
+    return b;
+  }
+  // ohne Angabe: erst UTF-8 versuchen, sonst Windows-1252 (alte Mails ohne charset)
+  function decodeBin(bin, charset) {
+    var cs = String(charset || "").trim().replace(/^"|"$/g, "").toLowerCase();
+    if (cs === "us-ascii" || cs === "ascii" || cs === "utf8") cs = "utf-8";
+    if (typeof TextDecoder === "undefined") return bin;
+    if (!cs) {
+      try { return new TextDecoder("utf-8", { fatal: true }).decode(bytesOf(bin)); } catch (e) { cs = "windows-1252"; }
+    }
+    try { return new TextDecoder(cs).decode(bytesOf(bin)); }
+    catch (e2) { try { return new TextDecoder("windows-1252").decode(bytesOf(bin)); } catch (e3) { return bin; } }
+  }
+  function unQP(s) {
+    return String(s).replace(/=\r?\n/g, "").replace(/=([0-9A-Fa-f]{2})/g, function (m, h) { return String.fromCharCode(parseInt(h, 16)); });
+  }
+  function unB64(s) {
+    var t = String(s).replace(/[^A-Za-z0-9+\/]/g, "");
+    while (t.length % 4) t += "=";
+    try { return atob(t); } catch (e) { return ""; }
+  }
+  // Kopfzeilen: =?charset?B|Q?...?= (RFC 2047); benachbarte Woerter desselben
+  // Zeichensatzes werden zusammen entschluesselt, sonst zerfielen geteilte Umlaute
+  function decodeWords(s) {
+    s = String(s || "");
+    var re = /=\?([^?*]+)(?:\*[^?]*)?\?([bBqQ])\?([^?]*)\?=/g, out = "", last = 0, pend = null, m;
+    var flush = function () { if (pend) { out += decodeBin(pend.bin, pend.cs); pend = null; } };
+    while ((m = re.exec(s))) {
+      var gap = s.slice(last, m.index);
+      if (!(pend && /^\s*$/.test(gap))) { flush(); out += decodeBin(gap, ""); }
+      var bin = /b/i.test(m[2]) ? unB64(m[3]) : unQP(m[3].replace(/_/g, " "));
+      var cs = m[1].toLowerCase();
+      if (pend && pend.cs === cs) pend.bin += bin;
+      else { flush(); pend = { cs: cs, bin: bin }; }
+      last = re.lastIndex;
+    }
+    flush();
+    return out + decodeBin(s.slice(last), "");
+  }
+  function mailHeaders(bin) {
+    var h = {};
+    bin.replace(/\r?\n[ \t]+/g, " ").split(/\r?\n/).forEach(function (line) {
+      var i = line.indexOf(":");
+      if (i <= 0) return;
+      var k = line.slice(0, i).trim().toLowerCase();
+      if (!(k in h)) h[k] = line.slice(i + 1).trim();
+    });
+    return h;
+  }
+  // Parameter einer Kopfzeile, auch name*=utf-8''Fl%C3%BCge (RFC 2231)
+  function mailParam(v, name) {
+    var m = String(v || "").match(new RegExp("(?:^|;)\\s*" + name + "(\\*?)=\\s*(?:\"([^\"]*)\"|([^;\\s]+))", "i"));
+    if (!m) return "";
+    var val = m[2] !== undefined ? m[2] : m[3];
+    if (m[1]) {
+      var r = val.match(/^([^']*)'[^']*'(.*)$/);
+      if (r) return decodeBin(r[2].replace(/%([0-9A-Fa-f]{2})/g, function (x, hx) { return String.fromCharCode(parseInt(hx, 16)); }), r[1] || "utf-8");
+    }
+    return decodeWords(val);
+  }
+  function mailPart(bin, out, depth) {
+    var cut = bin.match(/\r?\n\r?\n/);
+    var head = mailHeaders(cut ? bin.slice(0, cut.index) : bin), body = cut ? bin.slice(cut.index + cut[0].length) : "";
+    var ct = head["content-type"] || "text/plain", type = ct.split(";")[0].trim().toLowerCase();
+    var disp = head["content-disposition"] || "", attached = /^\s*attachment/i.test(disp);
+    var name = mailParam(disp, "filename") || mailParam(ct, "name");
+    if (/^multipart\//.test(type) && depth < 8) {
+      var b = mailParam(ct, "boundary");
+      if (b) {
+        body.split("--" + b).slice(1).forEach(function (part) {
+          if (/^--/.test(part)) return;   // Schluss und was danach kommt
+          mailPart(part.replace(/^[ \t]*\r?\n/, ""), out, depth + 1);
+        });
+        return;
+      }
+    }
+    if (type === "message/rfc822") { out.files.push(name || "weitergeleitete Mail"); return; }
+    if (attached || (name && !/^text\/(plain|html)$/.test(type))) { if (name || attached) out.files.push(name || type); return; }
+    var enc = (head["content-transfer-encoding"] || "").trim().toLowerCase();
+    var raw = enc === "base64" ? unB64(body) : enc === "quoted-printable" ? unQP(body) : body;
+    if (type === "text/plain" && out.plain === null) out.plain = decodeBin(raw, mailParam(ct, "charset"));
+    else if (type === "text/html" && out.html === null) out.html = decodeBin(raw, mailParam(ct, "charset"));
+    if (!out.head) out.head = head;
+  }
+  // HTML-Mail als Text: Zeilen bleiben, Zeichen wie &auml; werden aufgeloest;
+  // die Textarea liest nur Text, ausgefuehrt wird nichts
+  function mailHtmlText(html) {
+    var t = String(html || "").replace(/<(script|style|head|title)\b[\s\S]*?<\/\1\s*>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n").replace(/<li\b[^>]*>/gi, "\n• ")
+      .replace(/<\/(p|div|li|tr|table|h[1-6]|blockquote|ul|ol)\s*>/gi, "\n").replace(/<[^>]*>/g, "");
+    var ta = document.createElement("textarea");
+    ta.innerHTML = t;
+    return ta.value;
+  }
+  function mailTidy(t) {
+    return String(t || "").replace(/\r\n?/g, "\n").replace(/\u00a0/g, " ").replace(/[ \t]+$/gm, "")
+      .replace(/\n{3,}/g, "\n\n").trim();
+  }
+  function mailDate(iso) {
+    var d = new Date(iso);
+    return pad2(d.getDate()) + "." + pad2(d.getMonth() + 1) + "." + d.getFullYear() + ", " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+  }
+  function parseEml(bin) {
+    var out = { plain: null, html: null, files: [], head: null };
+    var cut = bin.match(/\r?\n\r?\n/);
+    var top = mailHeaders(cut ? bin.slice(0, cut.index) : bin);
+    mailPart(bin, out, 0);
+    var when = Date.parse(top.date || "");
+    var mid = (top["message-id"] || "").replace(/^\s*<|>\s*$/g, "").trim();
+    return {
+      subject: mailTidy(decodeWords(top.subject || "")).replace(/\s+/g, " "),
+      from: decodeWords(top.from || "").replace(/"/g, "").replace(/\s+/g, " ").trim(),
+      date: isNaN(when) ? null : new Date(when).toISOString(),
+      text: mailTidy(out.plain !== null ? out.plain : out.html !== null ? mailHtmlText(out.html) : ""),
+      files: out.files,
+      link: mid ? "message://%3C" + encodeURIComponent(mid) + "%3E" : ""
+    };
+  }
+  function mailToEntry(mail) {
+    var lines = [];
+    if (mail.from) lines.push("Mail von " + mail.from);
+    else lines.push("Mail");
+    if (mail.date) lines.push(mailDate(mail.date));
+    if (mail.files.length) lines.push("Anhänge: " + mail.files.join(", "));
+    if (mail.link) lines.push("In Apple Mail öffnen: " + mail.link);
+    var body = mail.text.length > MAIL_TEXT_MAX ? mail.text.slice(0, MAIL_TEXT_MAX - 1).replace(/\s+\S*$/, "") + " …" : mail.text;
+    return { text: shortText(mail.subject || "(Mail ohne Betreff)", MAIL_SUBJECT_MAX), notes: lines.join("\n") + (body ? "\n\n" + body : "") };
+  }
+  function isMailFile(f) { return /\.eml$/i.test(f.name || "") || /^message\/rfc822/i.test(f.type || ""); }
+  function readMails(files) {
+    var mails = (files || []).filter(isMailFile);
+    return Promise.all(mails.map(function (f) {
+      var buf = f.arrayBuffer ? f.arrayBuffer() : new Response(f).arrayBuffer();
+      return buf.then(function (ab) { return parseEml(binOf(new Uint8Array(ab))); });
+    }));
+  }
+  function addMailToInbox(e) {
+    state.inbox = state.inbox.concat([{ id: nextId(), text: e.text, notes: e.notes, created: new Date().toISOString() }]);
+  }
+  function plural(n, one, many) { return n === 1 ? one : n + " " + many; }
+  // Ziel: { coreId } | { newCore: true } | null (Eingang); from: Ort des Loslassens
+  function importMails(mails, target, from) {
+    var entries = (mails || []).map(mailToEntry), msg = "", toInbox = [];
+    if (!entries.length) { mailToast("Keine Mail erkannt – IdeaHub liest Mails als .eml-Datei."); return ""; }
+    var now = new Date().toISOString();
+    var core = target && target.coreId ? coreById(target.coreId) : null;
+    if (core) {
+      var room = Math.max(0, MAX_DETAILS - core.details.length), here = entries.slice(0, room);
+      toInbox = entries.slice(here.length);
+      if (here.length) {
+        state.cores = state.cores.map(function (c) {
+          return c.id !== core.id ? c : Object.assign({}, c, { details: c.details.concat(here.map(function (e) {
+            return { id: nextId(), text: e.text, status: "offen", notes: e.notes, tags: [], color: "auto", created: now };
+          })) });
+        });
+        msg = plural(here.length, "Mail", "Mails") + " bei „" + shortText(core.text, 40) + "“ als " + (here.length === 1 ? "Detail" : "Details");
+        if (toInbox.length) msg += ", " + toInbox.length + " in den Eingang (die Idee hat jetzt " + MAX_DETAILS + " Details)";
+      } else {
+        msg = "„" + shortText(core.text, 40) + "“ hat schon " + MAX_DETAILS + " Details – " + plural(toInbox.length, "die Mail liegt", "Mails liegen") + " im Eingang";
+      }
+    } else if (target && target.newCore && state.cores.length < MAX_CORES) {
+      var id = nextId(), first = entries[0];
+      state.cores = state.cores.concat([{ id: id, text: first.text, subtitle: "", icon: "none", color: "auto", tags: [], notes: first.notes, created: now, details: [] }]);
+      toInbox = entries.slice(1);
+      core = { id: id, text: first.text };
+      msg = "Neue Kernidee „" + shortText(first.text, 40) + "“" + (toInbox.length ? ", " + plural(toInbox.length, "eine Mail", "Mails") + " in den Eingang" : "");
+    } else {
+      toInbox = entries;
+      msg = plural(entries.length, "Mail", "Mails") + " im Eingang";
+    }
+    toInbox.forEach(addMailToInbox);
+    if (toInbox.length) {
+      persistInbox();
+      updateInboxBadge();
+      if (inboxOpen()) renderInbox();
+    }
+    if (core && (target.coreId || target.newCore)) {
+      onCoresChanged();
+      if (state.view === "map" && from) sinkIntoCore(core.id, entries[0].text, from);
+    } else if (state.view === "map") renderInboxDots();
+    mailToast(msg);
+    return msg;
+  }
+  var mailToastEl = null, mailToastTimer = null;
+  function mailToast(text, stay, action) {
+    if (!mailToastEl) {
+      mailToastEl = document.createElement("div");
+      mailToastEl.className = "ihb-mailtoast";
+      mailToastEl.id = "mailToast";
+      mailToastEl.setAttribute("role", "status");
+      mailToastEl.setAttribute("aria-live", "polite");
+      document.body.appendChild(mailToastEl);
+    }
+    mailToastEl.textContent = text || "";
+    if (text && action) {   // v5.5: z. B. "Gespeichert - Rueckgaengig"
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "ihb-toast-act";
+      b.setAttribute("data-role", "toast-act");
+      b.textContent = action.label;
+      b.addEventListener("click", function () { mailToast(""); action.run(); });
+      mailToastEl.appendChild(document.createTextNode(" · "));
+      mailToastEl.appendChild(b);
+    }
+    mailToastEl.classList.toggle("has-act", !!(text && action));
+    mailToastEl.classList.toggle("is-on", !!text);
+    clearTimeout(mailToastTimer);
+    if (text && !stay) mailToastTimer = setTimeout(function () { mailToast(""); }, action ? 8000 : 5000);
+  }
+  // Ziehen ueber dem Fenster: Rahmen, Hinweis, die Ziel-Idee leuchtet
+  var mailTarget = null, mailDragging = false;
+  function dragHasFiles(e) {
+    var t = e.dataTransfer && e.dataTransfer.types;
+    if (!t) return false;
+    for (var i = 0; i < t.length; i++) if (t[i] === "Files") return true;
+    return false;
+  }
+  function mailDropTarget(x, y) {
+    if (state.view === "tree") {
+      var el = document.elementFromPoint(x, y), row = el && el.closest && el.closest('[data-role="tree-core"], [data-role="tree-detail"]');
+      if (!row) return null;
+      var cid = row.getAttribute("data-core-id");
+      var core = row.closest('[data-role="tree-core"]') || document.querySelector('[data-role="tree-core"][data-core-id="' + cid + '"]');
+      return cid ? { el: core || row, coreId: cid } : null;
+    }
+    var t = inboxDropTarget(x, y);
+    if (t && t.coreId && !coreById(t.coreId)) return null;
+    return t;
+  }
+  function setMailTarget(t) {
+    if (mailTarget && mailTarget.el && (!t || t.el !== mailTarget.el)) mailTarget.el.classList.remove("ihb-droptarget");
+    if (t && t.el) t.el.classList.add("ihb-droptarget");
+    mailTarget = t;
+  }
+  function endMailDrag() {
+    setMailTarget(null);
+    mailDragging = false;
+    document.body.classList.remove("ihb-maildrag");
+  }
+  document.addEventListener("dragover", function (e) {
+    if (!dragHasFiles(e)) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+    if (!mailDragging) {
+      mailDragging = true;
+      document.body.classList.add("ihb-maildrag");
+      mailToast("Mail loslassen: auf einer Idee wird sie ein Detail, sonst ein Gedanke im Eingang", true);
+    }
+    setMailTarget(mailDropTarget(e.clientX, e.clientY));
+  });
+  document.addEventListener("dragleave", function (e) {
+    if (e.relatedTarget || !mailDragging) return;   // nur wenn es das Fenster verlaesst
+    endMailDrag();
+    mailToast("");
+  });
+  document.addEventListener("drop", function (e) {
+    if (!dragHasFiles(e)) return;
+    e.preventDefault();
+    var tgt = mailDropTarget(e.clientX, e.clientY), from = { x: e.clientX, y: e.clientY };
+    endMailDrag();
+    var files = Array.prototype.slice.call((e.dataTransfer && e.dataTransfer.files) || []);
+    readMails(files).then(function (mails) { importMails(mails, tgt, from); },
+      function () { mailToast("Die Mail ließ sich nicht lesen."); });
   });
 
   // ---------- Aufruf per Link ----------
@@ -9473,6 +9966,9 @@
     exportJson: exportJson, applyJsonBackup: applyJsonBackup, moveDetail: moveDetail,
     visibleCores: visibleCores, clusterGroups: clusterGroups, setCluster: setCluster, cloudInfo: cloudInfo,
     doneOf: doneOf, coreDone: coreDone, DONE_SCALE: DONE_SCALE,
+    editorBig: editorBig, undoLastEdit: undoLastEdit, saveEditorDraft: saveEditorDraft,
+    parseEml: function (text) { return parseEml(String(text)); }, mailToEntry: mailToEntry, importMails: importMails,
+    assignInboxToCore: assignInboxToCore, assignInboxToNewCore: assignInboxToNewCore,
     crossLinks: crossLinks, linkPath: linkPath, setShowLinks: setShowLinks, paletteFor: paletteFor, hexToRgbTriple: hexToRgbTriple,
     getLayout: function () { return layout; },
     // Raum (v5.0)
